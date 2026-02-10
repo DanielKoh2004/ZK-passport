@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZK</string>
+
+    <!-- Settings Screen -->
+    <string name="settings">Paramètres</string>
+    <string name="account">Compte</string>
+    <string name="profile">Profil</string>
+    <string name="change_password">Changer le Mot de Passe</string>
+    <string name="security_preferences">Sécurité et Préférences</string>
+    <string name="biometric_login">Connexion Biométrique</string>
+    <string name="change_language">Changer la Langue</string>
+    <string name="faq">Questions Fréquentes</string>
+    <string name="logout">Déconnexion</string>
+    <string name="delete_account">Supprimer le Compte</string>
+    <string name="select_language">Sélectionner la Langue</string>
+    <string name="cancel">Annuler</string>
+    <string name="ok">OK</string>
+    <string name="biometric_not_available">Biométrie Non Disponible</string>
+    <string name="biometric_not_available_message">L\'authentification biométrique n\'est pas disponible sur cet appareil.</string>
+    <string name="passport_valid_until">Passeport valide jusqu\'au : %s</string>
+    <string name="passport_not_connected">Passeport non connecté</string>
+
+    <!-- Home Screen -->
+    <string name="home">Accueil</string>
+    <string name="welcome">Bienvenue</string>
+    <string name="generate_proof">Générer une Preuve</string>
+    <string name="activity">Activité</string>
+    <string name="identity">Identité</string>
+    <string name="notifications">Notifications</string>
+    <string name="credential_active">Identifiant : Actif</string>
+    <string name="credential_not_added">Identifiant : Non Ajouté</string>
+    <string name="generate_proof_desc">Créez une preuve à divulgation nulle sécurisée pour vérifier votre identité sans partager de données personnelles sensibles.</string>
+    <string name="start_generation">Démarrer la Génération</string>
+    <string name="support">Support</string>
+    <string name="hello_user">Bonjour, %s</string>
+
+    <!-- Wallet -->
+    <string name="create_wallet">Créer un Portefeuille</string>
+    <string name="login">Se Connecter</string>
+    <string name="set_pin">Définir le PIN</string>
+    <string name="confirm_pin">Confirmer le PIN</string>
+    <string name="enter_pin">Entrer le PIN</string>
+    <string name="scan_passport">Scanner le Passeport</string>
+    <string name="wallet_created">Portefeuille Créé</string>
+    <string name="unlock_wallet">Déverrouiller le Portefeuille</string>
+    <string name="enter_6_digit_pin">Entrez votre PIN à 6 chiffres</string>
+    <string name="pin_incorrect">PIN incorrect. Veuillez réessayer.</string>
+    <string name="pins_dont_match">Les PINs ne correspondent pas. Veuillez réessayer.</string>
+    <string name="continue_text">Continuer</string>
+    <string name="back">Retour</string>
+    <string name="next">Suivant</string>
+    <string name="done">Terminé</string>
+    <string name="skip">Passer</string>
+    <string name="retry">Réessayer</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_title">Bienvenue sur ZK Wallet</string>
+    <string name="welcome_subtitle">Votre portefeuille d\'identité sécurisé</string>
+
+    <!-- Profile Screen -->
+    <string name="full_name">Nom Complet</string>
+    <string name="nationality">Nationalité</string>
+    <string name="date_of_birth">Date de Naissance</string>
+    <string name="gender">Genre</string>
+    <string name="document_number">Numéro de Document</string>
+    <string name="expiry_date">Date d\'Expiration</string>
+    <string name="issuing_country">Pays Émetteur</string>
+    <string name="personal_information">Informations Personnelles</string>
+    <string name="document_details">Détails du Document</string>
+
+    <!-- Common -->
+    <string name="user">Utilisateur</string>
+    <string name="verified">Vérifié</string>
+    <string name="selected">Sélectionné</string>
+    <string name="loading">Chargement...</string>
+    <string name="error">Erreur</string>
+    <string name="success">Succès</string>
+</resources>

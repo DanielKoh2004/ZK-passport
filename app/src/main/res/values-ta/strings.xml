@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZK</string>
+
+    <!-- Settings Screen -->
+    <string name="settings">அமைப்புகள்</string>
+    <string name="account">கணக்கு</string>
+    <string name="profile">சுயவிவரம்</string>
+    <string name="change_password">கடவுச்சொல்லை மாற்று</string>
+    <string name="security_preferences">பாதுகாப்பு &amp; விருப்பங்கள்</string>
+    <string name="biometric_login">பயோமெட்ரிக் உள்நுழைவு</string>
+    <string name="change_language">மொழியை மாற்று</string>
+    <string name="faq">அடிக்கடி கேட்கப்படும் கேள்விகள்</string>
+    <string name="logout">வெளியேறு</string>
+    <string name="delete_account">கணக்கை நீக்கு</string>
+    <string name="select_language">மொழியைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="cancel">ரத்துசெய்</string>
+    <string name="ok">சரி</string>
+    <string name="biometric_not_available">பயோமெட்ரிக் கிடைக்கவில்லை</string>
+    <string name="biometric_not_available_message">இந்த சாதனத்தில் பயோமெட்ரிக் அங்கீகாரம் கிடைக்கவில்லை.</string>
+    <string name="passport_valid_until">பாஸ்போர்ட் செல்லுபடியாகும் தேதி: %s</string>
+    <string name="passport_not_connected">பாஸ்போர்ட் இணைக்கப்படவில்லை</string>
+
+    <!-- Home Screen -->
+    <string name="home">முகப்பு</string>
+    <string name="welcome">வரவேற்கிறோம்</string>
+    <string name="generate_proof">சான்று உருவாக்கு</string>
+    <string name="activity">செயல்பாடு</string>
+    <string name="identity">அடையாளம்</string>
+    <string name="notifications">அறிவிப்புகள்</string>
+    <string name="credential_active">சான்றிதழ்: செயலில்</string>
+    <string name="credential_not_added">சான்றிதழ்: சேர்க்கப்படவில்லை</string>
+    <string name="generate_proof_desc">உணர்திறன் தனிப்பட்ட தரவைப் பகிராமல் உங்கள் அடையாளத்தைச் சரிபார்க்க பாதுகாப்பான ஜீரோ-நாலெட்ஜ் ஆதாரத்தை உருவாக்கவும்.</string>
+    <string name="start_generation">உருவாக்கத்தைத் தொடங்கு</string>
+    <string name="support">ஆதரவு</string>
+    <string name="hello_user">வணக்கம், %s</string>
+
+    <!-- Wallet -->
+    <string name="create_wallet">வாலட் உருவாக்கு</string>
+    <string name="login">உள்நுழை</string>
+    <string name="set_pin">PIN அமை</string>
+    <string name="confirm_pin">PIN உறுதிப்படுத்து</string>
+    <string name="enter_pin">PIN உள்ளிடவும்</string>
+    <string name="scan_passport">பாஸ்போர்ட் ஸ்கேன் செய்</string>
+    <string name="wallet_created">வாலட் உருவாக்கப்பட்டது</string>
+    <string name="unlock_wallet">வாலட்டைத் திற</string>
+    <string name="enter_6_digit_pin">உங்கள் 6 இலக்க PIN ஐ உள்ளிடவும்</string>
+    <string name="pin_incorrect">தவறான PIN. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="pins_dont_match">PIN கள் பொருந்தவில்லை. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="continue_text">தொடரவும்</string>
+    <string name="back">பின்செல்</string>
+    <string name="next">அடுத்து</string>
+    <string name="done">முடிந்தது</string>
+    <string name="skip">தவிர்</string>
+    <string name="retry">மீண்டும் முயற்சி</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_title">ZK Wallet க்கு வரவேற்கிறோம்</string>
+    <string name="welcome_subtitle">உங்கள் பாதுகாப்பான அடையாள வாலட்</string>
+
+    <!-- Profile Screen -->
+    <string name="full_name">முழு பெயர்</string>
+    <string name="nationality">தேசியம்</string>
+    <string name="date_of_birth">பிறந்த தேதி</string>
+    <string name="gender">பாலினம்</string>
+    <string name="document_number">ஆவண எண்</string>
+    <string name="expiry_date">காலாவதி தேதி</string>
+    <string name="issuing_country">வழங்கும் நாடு</string>
+    <string name="personal_information">தனிப்பட்ட தகவல்</string>
+    <string name="document_details">ஆவண விவரங்கள்</string>
+
+    <!-- Common -->
+    <string name="user">பயனர்</string>
+    <string name="verified">சரிபார்க்கப்பட்டது</string>
+    <string name="selected">தேர்ந்தெடுக்கப்பட்டது</string>
+    <string name="loading">ஏற்றுகிறது...</string>
+    <string name="error">பிழை</string>
+    <string name="success">வெற்றி</string>
+</resources>

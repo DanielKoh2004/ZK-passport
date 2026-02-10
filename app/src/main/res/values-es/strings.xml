@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZK</string>
+
+    <!-- Settings Screen -->
+    <string name="settings">Configuración</string>
+    <string name="account">Cuenta</string>
+    <string name="profile">Perfil</string>
+    <string name="change_password">Cambiar Contraseña</string>
+    <string name="security_preferences">Seguridad y Preferencias</string>
+    <string name="biometric_login">Inicio de Sesión Biométrico</string>
+    <string name="change_language">Cambiar Idioma</string>
+    <string name="faq">Preguntas Frecuentes</string>
+    <string name="logout">Cerrar Sesión</string>
+    <string name="delete_account">Eliminar Cuenta</string>
+    <string name="select_language">Seleccionar Idioma</string>
+    <string name="cancel">Cancelar</string>
+    <string name="ok">Aceptar</string>
+    <string name="biometric_not_available">Biometría No Disponible</string>
+    <string name="biometric_not_available_message">La autenticación biométrica no está disponible en este dispositivo.</string>
+    <string name="passport_valid_until">Pasaporte válido hasta: %s</string>
+    <string name="passport_not_connected">Pasaporte no conectado</string>
+
+    <!-- Home Screen -->
+    <string name="home">Inicio</string>
+    <string name="welcome">Bienvenido</string>
+    <string name="generate_proof">Generar Prueba</string>
+    <string name="activity">Actividad</string>
+    <string name="identity">Identidad</string>
+    <string name="notifications">Notificaciones</string>
+    <string name="credential_active">Credencial: Activa</string>
+    <string name="credential_not_added">Credencial: No Agregada</string>
+    <string name="generate_proof_desc">Cree una prueba de conocimiento cero segura para verificar su identidad sin compartir datos personales sensibles.</string>
+    <string name="start_generation">Iniciar Generación</string>
+    <string name="support">Soporte</string>
+    <string name="hello_user">Hola, %s</string>
+
+    <!-- Wallet -->
+    <string name="create_wallet">Crear Billetera</string>
+    <string name="login">Iniciar Sesión</string>
+    <string name="set_pin">Establecer PIN</string>
+    <string name="confirm_pin">Confirmar PIN</string>
+    <string name="enter_pin">Ingresar PIN</string>
+    <string name="scan_passport">Escanear Pasaporte</string>
+    <string name="wallet_created">Billetera Creada</string>
+    <string name="unlock_wallet">Desbloquear Billetera</string>
+    <string name="enter_6_digit_pin">Ingrese su PIN de 6 dígitos</string>
+    <string name="pin_incorrect">PIN incorrecto. Por favor intente de nuevo.</string>
+    <string name="pins_dont_match">Los PINs no coinciden. Por favor intente de nuevo.</string>
+    <string name="continue_text">Continuar</string>
+    <string name="back">Atrás</string>
+    <string name="next">Siguiente</string>
+    <string name="done">Hecho</string>
+    <string name="skip">Omitir</string>
+    <string name="retry">Reintentar</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_title">Bienvenido a ZK Wallet</string>
+    <string name="welcome_subtitle">Su billetera de identidad segura</string>
+
+    <!-- Profile Screen -->
+    <string name="full_name">Nombre Completo</string>
+    <string name="nationality">Nacionalidad</string>
+    <string name="date_of_birth">Fecha de Nacimiento</string>
+    <string name="gender">Género</string>
+    <string name="document_number">Número de Documento</string>
+    <string name="expiry_date">Fecha de Vencimiento</string>
+    <string name="issuing_country">País Emisor</string>
+    <string name="personal_information">Información Personal</string>
+    <string name="document_details">Detalles del Documento</string>
+
+    <!-- Common -->
+    <string name="user">Usuario</string>
+    <string name="verified">Verificado</string>
+    <string name="selected">Seleccionado</string>
+    <string name="loading">Cargando...</string>
+    <string name="error">Error</string>
+    <string name="success">Éxito</string>
+</resources>

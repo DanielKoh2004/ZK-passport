@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZK</string>
+
+    <!-- Settings Screen -->
+    <string name="settings">設定</string>
+    <string name="account">アカウント</string>
+    <string name="profile">プロフィール</string>
+    <string name="change_password">パスワード変更</string>
+    <string name="security_preferences">セキュリティと設定</string>
+    <string name="biometric_login">生体認証ログイン</string>
+    <string name="change_language">言語変更</string>
+    <string name="faq">よくある質問</string>
+    <string name="logout">ログアウト</string>
+    <string name="delete_account">アカウント削除</string>
+    <string name="select_language">言語を選択</string>
+    <string name="cancel">キャンセル</string>
+    <string name="ok">OK</string>
+    <string name="biometric_not_available">生体認証が利用できません</string>
+    <string name="biometric_not_available_message">このデバイスでは生体認証が利用できません。</string>
+    <string name="passport_valid_until">パスポート有効期限：%s</string>
+    <string name="passport_not_connected">パスポート未接続</string>
+
+    <!-- Home Screen -->
+    <string name="home">ホーム</string>
+    <string name="welcome">ようこそ</string>
+    <string name="generate_proof">証明を生成</string>
+    <string name="activity">アクティビティ</string>
+    <string name="identity">アイデンティティ</string>
+    <string name="notifications">通知</string>
+    <string name="credential_active">資格情報：有効</string>
+    <string name="credential_not_added">資格情報：未追加</string>
+    <string name="generate_proof_desc">個人データを共有せずに身元を証明する安全なゼロ知識証明を作成します。</string>
+    <string name="start_generation">生成を開始</string>
+    <string name="support">サポート</string>
+    <string name="hello_user">こんにちは、%s</string>
+
+    <!-- Wallet -->
+    <string name="create_wallet">ウォレット作成</string>
+    <string name="login">ログイン</string>
+    <string name="set_pin">PINを設定</string>
+    <string name="confirm_pin">PINを確認</string>
+    <string name="enter_pin">PINを入力</string>
+    <string name="scan_passport">パスポートをスキャン</string>
+    <string name="wallet_created">ウォレット作成完了</string>
+    <string name="unlock_wallet">ウォレットをロック解除</string>
+    <string name="enter_6_digit_pin">6桁のPINを入力してください</string>
+    <string name="pin_incorrect">PINが間違っています。もう一度お試しください。</string>
+    <string name="pins_dont_match">PINが一致しません。もう一度お試しください。</string>
+    <string name="continue_text">続ける</string>
+    <string name="back">戻る</string>
+    <string name="next">次へ</string>
+    <string name="done">完了</string>
+    <string name="skip">スキップ</string>
+    <string name="retry">再試行</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_title">ZK Walletへようこそ</string>
+    <string name="welcome_subtitle">あなたの安全なアイデンティティウォレット</string>
+
+    <!-- Profile Screen -->
+    <string name="full_name">氏名</string>
+    <string name="nationality">国籍</string>
+    <string name="date_of_birth">生年月日</string>
+    <string name="gender">性別</string>
+    <string name="document_number">書類番号</string>
+    <string name="expiry_date">有効期限</string>
+    <string name="issuing_country">発行国</string>
+    <string name="personal_information">個人情報</string>
+    <string name="document_details">書類詳細</string>
+
+    <!-- Common -->
+    <string name="user">ユーザー</string>
+    <string name="verified">認証済み</string>
+    <string name="selected">選択済み</string>
+    <string name="loading">読み込み中...</string>
+    <string name="error">エラー</string>
+    <string name="success">成功</string>
+</resources>

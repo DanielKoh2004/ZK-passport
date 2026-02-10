@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZK</string>
+
+    <!-- Settings Screen -->
+    <string name="settings">Tetapan</string>
+    <string name="account">Akaun</string>
+    <string name="profile">Profil</string>
+    <string name="change_password">Tukar Kata Laluan</string>
+    <string name="security_preferences">Keselamatan &amp; Keutamaan</string>
+    <string name="biometric_login">Log Masuk Biometrik</string>
+    <string name="change_language">Tukar Bahasa</string>
+    <string name="faq">Soalan Lazim</string>
+    <string name="logout">Log Keluar</string>
+    <string name="delete_account">Padam Akaun</string>
+    <string name="select_language">Pilih Bahasa</string>
+    <string name="cancel">Batal</string>
+    <string name="ok">OK</string>
+    <string name="biometric_not_available">Biometrik Tidak Tersedia</string>
+    <string name="biometric_not_available_message">Pengesahan biometrik tidak tersedia pada peranti ini.</string>
+    <string name="passport_valid_until">Pasport sah sehingga: %s</string>
+    <string name="passport_not_connected">Pasport tidak disambungkan</string>
+
+    <!-- Home Screen -->
+    <string name="home">Utama</string>
+    <string name="welcome">Selamat Datang</string>
+    <string name="generate_proof">Jana Bukti</string>
+    <string name="activity">Aktiviti</string>
+    <string name="identity">Identiti</string>
+    <string name="notifications">Pemberitahuan</string>
+    <string name="credential_active">Kelayakan: Aktif</string>
+    <string name="credential_not_added">Kelayakan: Tidak Ditambah</string>
+    <string name="generate_proof_desc">Cipta bukti pengetahuan sifar yang selamat untuk mengesahkan identiti anda tanpa berkongsi data peribadi sensitif.</string>
+    <string name="start_generation">Mula Menjana</string>
+    <string name="support">Sokongan</string>
+    <string name="hello_user">Hai, %s</string>
+
+    <!-- Wallet -->
+    <string name="create_wallet">Cipta Dompet</string>
+    <string name="login">Log Masuk</string>
+    <string name="set_pin">Tetapkan PIN</string>
+    <string name="confirm_pin">Sahkan PIN</string>
+    <string name="enter_pin">Masukkan PIN</string>
+    <string name="scan_passport">Imbas Pasport</string>
+    <string name="wallet_created">Dompet Dicipta</string>
+    <string name="unlock_wallet">Buka Kunci Dompet</string>
+    <string name="enter_6_digit_pin">Masukkan PIN 6 digit anda</string>
+    <string name="pin_incorrect">PIN salah. Sila cuba lagi.</string>
+    <string name="pins_dont_match">PIN tidak sepadan. Sila cuba lagi.</string>
+    <string name="continue_text">Teruskan</string>
+    <string name="back">Kembali</string>
+    <string name="next">Seterusnya</string>
+    <string name="done">Selesai</string>
+    <string name="skip">Langkau</string>
+    <string name="retry">Cuba Lagi</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_title">Selamat Datang ke ZK Wallet</string>
+    <string name="welcome_subtitle">Dompet identiti selamat anda</string>
+
+    <!-- Profile Screen -->
+    <string name="full_name">Nama Penuh</string>
+    <string name="nationality">Kewarganegaraan</string>
+    <string name="date_of_birth">Tarikh Lahir</string>
+    <string name="gender">Jantina</string>
+    <string name="document_number">Nombor Dokumen</string>
+    <string name="expiry_date">Tarikh Luput</string>
+    <string name="issuing_country">Negara Pengeluar</string>
+    <string name="personal_information">Maklumat Peribadi</string>
+    <string name="document_details">Butiran Dokumen</string>
+
+    <!-- Common -->
+    <string name="user">Pengguna</string>
+    <string name="verified">Disahkan</string>
+    <string name="selected">Dipilih</string>
+    <string name="loading">Memuatkan...</string>
+    <string name="error">Ralat</string>
+    <string name="success">Berjaya</string>
+</resources>

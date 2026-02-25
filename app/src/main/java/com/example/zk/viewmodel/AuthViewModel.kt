@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.zk.data.WalletDataStore
 import com.example.zk.util.BiometricHelper
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -18,8 +20,15 @@ import kotlinx.coroutines.launch
  */
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        // Persist lockout state across ViewModel instances within the same process
+        @Volatile private var failedAttemptCount = 0
+        @Volatile private var lockoutEndTime = 0L
+    }
+
     private val walletDataStore = WalletDataStore(application)
     private val biometricHelper = BiometricHelper(application)
+    private var lockoutCountdownJob: Job? = null
 
     // Check if wallet exists
     val isWalletInitialized: StateFlow<Boolean> = walletDataStore.isWalletInitialized
@@ -43,6 +52,19 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     // UI State
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    init {
+        // Restore lockout state if still active from a previous ViewModel instance
+        val now = System.currentTimeMillis()
+        if (lockoutEndTime > now) {
+            _uiState.value = _uiState.value.copy(
+                isLockedOut = true,
+                lockoutRemainingSeconds = ((lockoutEndTime - now) / 1000).toInt() + 1,
+                failedAttempts = failedAttemptCount
+            )
+            startLockoutCountdown()
+        }
+    }
 
     // PIN entry for unlock
     private val _unlockPin = MutableStateFlow("")
@@ -87,6 +109,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
      * Enter digit for unlock PIN
      */
     fun enterUnlockDigit(digit: String) {
+        // Block input during lockout
+        if (_uiState.value.isLockedOut) return
+
         if (_unlockPin.value.length < 6) {
             _unlockPin.value += digit
             _uiState.value = _uiState.value.copy(errorMessage = null)
@@ -109,27 +134,103 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Verify unlock PIN
+     * Verify unlock PIN against stored hash with lockout protection
      */
     private fun verifyUnlockPin() {
         viewModelScope.launch {
+            // Check if still locked out
+            val now = System.currentTimeMillis()
+            if (now < lockoutEndTime) {
+                val remainingSeconds = ((lockoutEndTime - now) / 1000).toInt() + 1
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isLockedOut = true,
+                    lockoutRemainingSeconds = remainingSeconds,
+                    errorMessage = "Too many attempts. Try again in ${remainingSeconds}s"
+                )
+                _unlockPin.value = ""
+                return@launch
+            }
+
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             val isValid = walletDataStore.verifyPin(_unlockPin.value)
 
             if (isValid) {
+                failedAttemptCount = 0
+                lockoutEndTime = 0
+                lockoutCountdownJob?.cancel()
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isUnlocked = true,
+                    isLockedOut = false,
+                    lockoutRemainingSeconds = 0,
+                    failedAttempts = 0,
                     errorMessage = null
                 )
             } else {
+                failedAttemptCount++
+                val lockoutDuration = getLockoutDuration()
+
+                val errorMsg: String
+                if (lockoutDuration > 0) {
+                    lockoutEndTime = System.currentTimeMillis() + lockoutDuration
+                    startLockoutCountdown()
+                    errorMsg = "Too many attempts. Locked for ${lockoutDuration / 1000}s"
+                } else {
+                    val attemptsUntilLock = 3 - failedAttemptCount
+                    errorMsg = if (attemptsUntilLock > 0) {
+                        "Incorrect PIN. $attemptsUntilLock attempt${if (attemptsUntilLock > 1) "s" else ""} before lockout."
+                    } else {
+                        "Incorrect PIN. Try again."
+                    }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = "Incorrect PIN. Try again."
+                    errorMessage = errorMsg,
+                    failedAttempts = failedAttemptCount
                 )
                 _unlockPin.value = ""
             }
+        }
+    }
+
+    /**
+     * Get lockout duration based on number of failed attempts
+     * Exponential backoff: 30s → 60s → 5min → 10min
+     */
+    private fun getLockoutDuration(): Long {
+        return when {
+            failedAttemptCount >= 10 -> 600_000L  // 10 minutes
+            failedAttemptCount >= 7 -> 300_000L   // 5 minutes
+            failedAttemptCount >= 5 -> 60_000L    // 1 minute
+            failedAttemptCount >= 3 -> 30_000L    // 30 seconds
+            else -> 0L
+        }
+    }
+
+    /**
+     * Start countdown timer that updates UI every second during lockout
+     */
+    private fun startLockoutCountdown() {
+        lockoutCountdownJob?.cancel()
+        lockoutCountdownJob = viewModelScope.launch {
+            while (System.currentTimeMillis() < lockoutEndTime) {
+                val remaining = ((lockoutEndTime - System.currentTimeMillis()) / 1000).toInt() + 1
+                _uiState.value = _uiState.value.copy(
+                    isLockedOut = true,
+                    lockoutRemainingSeconds = remaining,
+                    errorMessage = "Too many attempts. Try again in ${remaining}s"
+                )
+                delay(1000)
+            }
+            // Lockout expired
+            _uiState.value = _uiState.value.copy(
+                isLockedOut = false,
+                lockoutRemainingSeconds = 0,
+                errorMessage = "Lockout expired. You may try again."
+            )
         }
     }
 
@@ -307,5 +408,8 @@ data class AuthUiState(
     val isLoading: Boolean = false,
     val isUnlocked: Boolean = false,
     val pinChanged: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isLockedOut: Boolean = false,
+    val lockoutRemainingSeconds: Int = 0,
+    val failedAttempts: Int = 0
 )

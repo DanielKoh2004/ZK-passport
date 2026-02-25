@@ -2,7 +2,6 @@ package com.example.zk.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,10 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,8 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
-import com.example.zk.R
 import com.example.zk.ui.theme.ZKTheme
 
 private val DarkBackground = Color(0xFF0D1421)
@@ -38,7 +32,6 @@ private val ErrorRed = Color(0xFFFF5252)
 @Composable
 fun ProfileScreen(
     onBackClick: () -> Unit = {},
-    onSaveClick: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
     onNavigateToActivity: () -> Unit = {},
     onNavigateToGenerateProof: () -> Unit = {},
@@ -57,22 +50,12 @@ fun ProfileScreen(
     passportIssuingCountry: String = ""
 ) {
     // Use passport data if available, otherwise use defaults
-    var fullName by remember(passportFullName) {
-        mutableStateOf(passportFullName.ifEmpty { userName.ifEmpty { "Not Set" } })
-    }
-    var icNumber by remember(passportDocNumber) {
-        mutableStateOf(passportDocNumber.ifEmpty { "Not Set" })
-    }
-    var country by remember(passportNationality) {
-        mutableStateOf(passportNationality.ifEmpty { passportIssuingCountry.ifEmpty { "Not Set" } })
-    }
-    var dateOfBirth by remember(passportDateOfBirth) {
-        mutableStateOf(passportDateOfBirth.ifEmpty { "Not Set" })
-    }
-    var gender by remember(passportGender) {
-        mutableStateOf(passportGender.ifEmpty { "Not Set" })
-    }
-    var contactNumber by remember { mutableStateOf("") }
+    val fullName = passportFullName.ifEmpty { userName.ifEmpty { "Not Set" } }
+    val icNumber = passportDocNumber.ifEmpty { "Not Set" }
+    val country = passportNationality.ifEmpty { passportIssuingCountry.ifEmpty { "Not Set" } }
+    val dateOfBirth = passportDateOfBirth.ifEmpty { "Not Set" }
+    val gender = passportGender.ifEmpty { "Not Set" }
+    val userInitial = fullName.firstOrNull()?.uppercaseChar() ?: 'U'
 
     Scaffold(
         containerColor = DarkBackground,
@@ -80,7 +63,7 @@ fun ProfileScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Edit Profile",
+                        text = "Profile",
                         color = Color.White,
                         fontWeight = FontWeight.Medium
                     )
@@ -91,15 +74,6 @@ fun ProfileScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
                             tint = Color.White
-                        )
-                    }
-                },
-                actions = {
-                    TextButton(onClick = onSaveClick) {
-                        Text(
-                            text = "Save",
-                            color = AccentCyan,
-                            fontWeight = FontWeight.Medium
                         )
                     }
                 },
@@ -127,7 +101,7 @@ fun ProfileScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Profile Avatar with Edit
+            // Profile Avatar with User Initial
             Box(
                 contentAlignment = Alignment.BottomEnd
             ) {
@@ -135,33 +109,53 @@ fun ProfileScreen(
                     modifier = Modifier
                         .size(100.dp)
                         .clip(CircleShape)
-                        .background(Color.Gray)
+                        .background(Color(0xFF2A3A4A))
                         .border(3.dp, AccentCyan, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Filled.Person,
-                        contentDescription = "Profile",
-                        tint = Color.White,
-                        modifier = Modifier.size(50.dp)
+                    Text(
+                        text = "$userInitial",
+                        color = AccentCyan,
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-                // Edit badge
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(AccentCyan)
-                        .clickable { /* Edit photo */ },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Filled.Edit,
-                        contentDescription = "Edit Photo",
-                        tint = DarkBackground,
-                        modifier = Modifier.size(16.dp)
-                    )
+                if (hasCredential) {
+                    // Verified badge
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF4CAF50)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Check,
+                            contentDescription = "Verified",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // User name display
+            Text(
+                text = fullName,
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            if (hasCredential && passportExpiry.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Expires: $passportExpiry",
+                    color = AccentCyan,
+                    fontSize = 13.sp
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -356,17 +350,6 @@ fun ProfileScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Contact Number Field - Editable
-            ProfileTextField(
-                label = "Contact Number",
-                value = contactNumber,
-                onValueChange = { contactNumber = it },
-                readOnly = false,
-                placeholder = "Enter contact number"
-            )
-
             Spacer(modifier = Modifier.height(32.dp))
 
             // Passport Status Section
@@ -497,67 +480,6 @@ private fun ProfileTextField(
             } else null,
             singleLine = true
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProfileDropdown(
-    label: String,
-    value: String,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    options: List<String>,
-    onOptionSelected: (String) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            color = Color.Gray,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = onExpandedChange
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = AccentCyan,
-                    unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
-                    focusedContainerColor = CardBackground,
-                    unfocusedContainerColor = CardBackground
-                ),
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                singleLine = true
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { onExpandedChange(false) },
-                modifier = Modifier.background(CardBackground)
-            ) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option, color = Color.White) },
-                        onClick = { onOptionSelected(option) },
-                        colors = MenuDefaults.itemColors(
-                            textColor = Color.White
-                        )
-                    )
-                }
-            }
-        }
     }
 }
 

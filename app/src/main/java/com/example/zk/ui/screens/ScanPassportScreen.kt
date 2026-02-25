@@ -2,6 +2,7 @@ package com.example.zk.ui.screens
 
 import android.Manifest
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -43,12 +44,17 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.zk.data.PassportData
 import com.example.zk.data.PassportReadingState
+import com.example.zk.passport.MrzScanner
 import com.example.zk.ui.theme.ZKTheme
 import com.example.zk.viewmodel.PassportScanStep
 import com.example.zk.viewmodel.PassportUiState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import java.util.concurrent.Executors
 
 private val DarkBackground = Color(0xFF0D1421)
 private val CardBackground = Color(0xFF1A2332)
@@ -152,7 +158,12 @@ fun ScanPassportScreen(
                     if (cameraPermissionState.status.isGranted) {
                         MrzCameraScanContent(
                             onEnterManually = onEnterManually,
-                            onMrzDetected = null // Camera auto-detection not yet implemented
+                            onMrzDetected = { docNum, dob, expiry ->
+                                onDocumentNumberChange(docNum)
+                                onDateOfBirthChange(dob)
+                                onExpiryDateChange(expiry)
+                                onConfirmMrz()
+                            }
                         )
                     } else {
                         CameraPermissionContent(
@@ -307,6 +318,20 @@ private fun MrzCameraScanContent(
     var scanStatus by remember { mutableStateOf("Position passport MRZ in the frame") }
     var isScanning by remember { mutableStateOf(true) }
 
+    // MRZ scanner & ML Kit recognizer – created once per composition
+    val mrzScanner = remember { MrzScanner() }
+    val textRecognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+    val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
+    var mrzDetected by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            mrzScanner.close()
+            textRecognizer.close()
+            analysisExecutor.shutdown()
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -335,11 +360,59 @@ private fun MrzCameraScanContent(
                                 it.setSurfaceProvider(previewView.surfaceProvider)
                             }
 
+                            // ── ImageAnalysis for live MRZ detection ──
+                            val imageAnalysis = ImageAnalysis.Builder()
+                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .build()
+
+                            imageAnalysis.setAnalyzer(analysisExecutor) { imageProxy ->
+                                // Skip if we already detected MRZ or callback is null
+                                if (mrzDetected || onMrzDetected == null) {
+                                    imageProxy.close()
+                                    return@setAnalyzer
+                                }
+
+                                @androidx.camera.core.ExperimentalGetImage
+                                val mediaImage = imageProxy.image
+                                if (mediaImage == null) {
+                                    imageProxy.close()
+                                    return@setAnalyzer
+                                }
+
+                                val inputImage = InputImage.fromMediaImage(
+                                    mediaImage,
+                                    imageProxy.imageInfo.rotationDegrees
+                                )
+
+                                textRecognizer.process(inputImage)
+                                    .addOnSuccessListener { visionText ->
+                                        if (!mrzDetected) {
+                                            val parsed = mrzScanner.extractMrzData(visionText.text)
+                                            if (parsed != null && parsed.isValid()) {
+                                                Log.d("MrzCamera", "MRZ detected: doc=${parsed.documentNumber} dob=${parsed.dateOfBirth} exp=${parsed.expiryDate}")
+                                                mrzDetected = true
+                                                isScanning = false
+                                                scanStatus = "MRZ detected!"
+                                                onMrzDetected(
+                                                    parsed.documentNumber,
+                                                    parsed.dateOfBirth,
+                                                    parsed.expiryDate
+                                                )
+                                            }
+                                        }
+                                        imageProxy.close()
+                                    }
+                                    .addOnFailureListener {
+                                        imageProxy.close()
+                                    }
+                            }
+
                             cameraProvider.unbindAll()
                             cameraProvider.bindToLifecycle(
                                 lifecycleOwner,
                                 CameraSelector.DEFAULT_BACK_CAMERA,
-                                preview
+                                preview,
+                                imageAnalysis
                             )
 
                             scanStatus = "Scanning for MRZ..."
@@ -477,7 +550,7 @@ private fun MrzCameraScanContent(
 
             // Info text
             Text(
-                text = "Camera MRZ scanning requires good lighting.\nFor best results, enter MRZ data manually.",
+                text = "Hold your passport steady in good lighting.\nThe MRZ will be detected automatically.",
                 color = Color.Gray,
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center
@@ -485,13 +558,13 @@ private fun MrzCameraScanContent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
+            OutlinedButton(
                 onClick = onEnterManually,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentCyan)
+                border = androidx.compose.foundation.BorderStroke(1.dp, AccentCyan)
             ) {
-                Text("Enter MRZ Manually", color = DarkBackground, fontWeight = FontWeight.SemiBold)
+                Text("Enter MRZ Manually Instead", color = AccentCyan, fontWeight = FontWeight.SemiBold)
             }
         }
     }

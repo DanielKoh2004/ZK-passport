@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.*
 
 /**
  * ViewModel for Home screen
- * Provides user name and credential status
+ * Provides user name, credential status, proof statistics
  */
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -16,16 +16,26 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     data class HomeState(
         val userName: String = "",
-        val hasCredential: Boolean = false
+        val hasCredential: Boolean = false,
+        val totalProofs: Int = 0,
+        val successfulProofs: Int = 0,
+        val lastProofTimestamp: Long = 0L,
+        val passportExpiry: String = ""
     )
 
     val homeState: StateFlow<HomeState> = combine(
         walletDataStore.userName,
-        walletDataStore.hasCredential
-    ) { name, hasCred ->
+        walletDataStore.hasCredential,
+        walletDataStore.proofHistory,
+        walletDataStore.passportExpiry
+    ) { name, hasCred, history, expiry ->
         HomeState(
             userName = name,
-            hasCredential = hasCred
+            hasCredential = hasCred,
+            totalProofs = history.size,
+            successfulProofs = history.count { it.success },
+            lastProofTimestamp = history.firstOrNull()?.timestamp ?: 0L,
+            passportExpiry = expiry
         )
     }.stateIn(
         viewModelScope,

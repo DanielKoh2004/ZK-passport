@@ -308,6 +308,13 @@ class WalletDataStore(private val context: Context) {
         } catch (_: Exception) { emptyList() }
     }
 
+    /** Clear all proof history. */
+    suspend fun clearProofHistory() {
+        context.walletDataStore.edit { prefs ->
+            prefs[PROOF_HISTORY] = "[]"
+        }
+    }
+
     /** Append a new entry to proof history. */
     suspend fun addProofHistoryEntry(entry: ProofHistoryEntry) {
         context.walletDataStore.edit { prefs ->

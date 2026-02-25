@@ -46,7 +46,9 @@ fun GenerateProofScreen(
     onNavigateToHome: () -> Unit = {},
     onNavigateToActivity: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
-    onGenerateProof: (proofType: Int, disclosureMask: Int) -> Unit = { _, _ -> }
+    onNavigateToScanPassport: () -> Unit = {},
+    onGenerateProof: (proofType: Int, disclosureMask: Int) -> Unit = { _, _ -> },
+    hasCredential: Boolean = false
 ) {
     var selectedTemplate by remember { mutableStateOf(0) }
     var passportPhotoSelected by remember { mutableStateOf(false) }
@@ -127,6 +129,69 @@ fun GenerateProofScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // No credential warning
+                if (!hasCredential) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFF9800).copy(alpha = 0.15f)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Warning,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFF9800),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "No Credential Found",
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "Scan your passport first to generate proofs.",
+                                        color = Color.Gray,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Button(
+                            onClick = onNavigateToScanPassport,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentCyan)
+                        ) {
+                            Icon(
+                                Icons.Outlined.AccountBox,
+                                contentDescription = null,
+                                tint = DarkBackground,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Scan Passport",
+                                color = DarkBackground,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
 
                 // Select Proof Template Section
                 item {
@@ -231,11 +296,16 @@ fun GenerateProofScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
                 shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentCyan)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AccentCyan,
+                    disabledContainerColor = AccentCyan.copy(alpha = 0.3f),
+                    disabledContentColor = DarkBackground.copy(alpha = 0.5f)
+                ),
+                enabled = hasCredential
             ) {
                 Text(
-                    text = "Generate Proof",
-                    color = DarkBackground,
+                    text = if (hasCredential) "Generate Proof" else "Credential Required",
+                    color = if (hasCredential) DarkBackground else DarkBackground.copy(alpha = 0.5f),
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(vertical = 4.dp)
                 )

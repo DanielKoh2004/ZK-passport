@@ -1,43 +1,121 @@
 package com.example.zk.navigation
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.zk.LocalPassportViewModel
+import com.example.zk.data.WalletDataStore
 import com.example.zk.ui.screens.*
 import com.example.zk.viewmodel.AuthViewModel
+import com.example.zk.viewmodel.HistoryViewModel
 import com.example.zk.viewmodel.HomeViewModel
 import com.example.zk.viewmodel.PassportViewModel
 import com.example.zk.viewmodel.ProfileViewModel
 import com.example.zk.viewmodel.SettingsViewModel
 import com.example.zk.viewmodel.WalletSetupViewModel
 
+private val SplashDark = Color(0xFF0D1421)
+private val SplashCyan = Color(0xFF00D9FF)
+
 /**
  * Main Navigation for ZK Wallet App
  *
- * Routes:
- * - welcome: Entry point with Create Wallet / Login options
+ * Production Auth Flow:
+ * - splash: Auto-detects wallet state, routes to welcome or unlock_wallet
+ * - welcome: First-time entry with Create Wallet / Login options
  * - set_pin: Step 1 - Set 6-digit PIN (Create Wallet flow)
- * - enrollment: Step 2 - Passport enrollment simulation
+ * - enrollment: Step 2 - Passport enrollment / NFC scan
  * - wallet_created: Step 3 - Success state
- * - unlock_wallet: Login with existing PIN
- * - home: Main dashboard
- * - generate_proof: ZK proof generation
- * - profile: User profile with credential status
- * - change_pin: Change wallet PIN
- * - activity: Activity/history screen
- * - settings: App settings
+ * - unlock_wallet: PIN/Biometric unlock for returning users
+ * - home: Main dashboard (authenticated)
+ *
+ * Security Features:
+ * - Auto-lock when app goes to background
+ * - PIN lockout after failed attempts (exponential backoff)
+ * - Biometric authentication support
+ * - Session-based locking with overlay (preserves navigation state)
  */
 @Composable
 fun AppNav() {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val walletDataStore = remember { WalletDataStore(context) }
 
+    // ==================== AUTO-LOCK ON BACKGROUND ====================
+    // Screens that don't require re-authentication
+    val unauthenticatedRoutes = remember {
+        setOf("splash", "welcome", "set_pin", "enrollment", "wallet_created", "unlock_wallet")
+    }
+    var isSessionLocked by remember { mutableStateOf(false) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                val currentRoute = navController.currentDestination?.route
+                if (currentRoute != null && currentRoute !in unauthenticatedRoutes) {
+                    isSessionLocked = true
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // ==================== MAIN UI ====================
+    Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
         navController = navController,
-        startDestination = "welcome"
+        startDestination = "splash"
     ) {
+        // ==================== SPLASH / AUTO-ROUTE ====================
+        composable("splash") {
+            var isInit by remember { mutableStateOf<Boolean?>(null) }
+
+            LaunchedEffect(Unit) {
+                walletDataStore.isWalletInitialized.collect { value ->
+                    isInit = value
+                }
+            }
+
+            LaunchedEffect(isInit) {
+                when (isInit) {
+                    true -> navController.navigate("unlock_wallet") {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                    false -> navController.navigate("welcome") {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                    null -> { /* Still loading from DataStore */ }
+                }
+            }
+
+            // Branded splash while loading
+            SplashContent()
+        }
+
         // ==================== ENTRY POINT ====================
         composable("welcome") {
             WelcomeScreen(
@@ -111,13 +189,14 @@ fun AppNav() {
 
         // Step 3: Wallet Created Success
         composable("wallet_created") {
+            val userName by walletDataStore.userName.collectAsState(initial = "User")
             WalletCreatedScreen(
                 onContinue = {
                     navController.navigate("home") {
-                        popUpTo("welcome") { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
-                userName = "User"
+                userName = userName
             )
         }
 
@@ -162,7 +241,7 @@ fun AppNav() {
             LaunchedEffect(uiState.isUnlocked) {
                 if (uiState.isUnlocked) {
                     navController.navigate("home") {
-                        popUpTo("welcome") { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             }
@@ -176,6 +255,7 @@ fun AppNav() {
                     // This callback is only used for external state success
                     // The LaunchedEffect above handles navigation
                 },
+                isLockedOut = uiState.isLockedOut,
                 externalPin = unlockPin,
                 errorMessage = uiState.errorMessage,
                 isLoading = uiState.isLoading,
@@ -194,16 +274,6 @@ fun AppNav() {
                     }
                 }
             )
-        }
-
-        // Legacy login route - redirect to unlock_wallet for proper verification
-        composable("login") {
-            // Redirect to unlock_wallet which has proper ViewModel integration
-            LaunchedEffect(Unit) {
-                navController.navigate("unlock_wallet") {
-                    popUpTo("login") { inclusive = true }
-                }
-            }
         }
 
         // ==================== MAIN SCREENS ====================
@@ -235,12 +305,19 @@ fun AppNav() {
                     }
                 },
                 userName = homeState.userName,
-                hasCredential = homeState.hasCredential
+                hasCredential = homeState.hasCredential,
+                totalProofs = homeState.totalProofs,
+                successfulProofs = homeState.successfulProofs,
+                lastProofTimestamp = homeState.lastProofTimestamp,
+                passportExpiry = homeState.passportExpiry
             )
         }
 
         // Generate Proof Screen
         composable("generate_proof") {
+            val homeViewModel: HomeViewModel = viewModel()
+            val homeState by homeViewModel.homeState.collectAsState()
+
             GenerateProofScreen(
                 onNavigateToHome = {
                     navController.navigate("home") {
@@ -257,11 +334,17 @@ fun AppNav() {
                         launchSingleTop = true
                     }
                 },
+                onNavigateToScanPassport = {
+                    navController.navigate("scan_passport") {
+                        launchSingleTop = true
+                    }
+                },
                 onGenerateProof = { proofType, disclosureMask ->
                     navController.navigate("my_qr/$proofType/$disclosureMask") {
                         launchSingleTop = true
                     }
-                }
+                },
+                hasCredential = homeState.hasCredential
             )
         }
 
@@ -272,7 +355,6 @@ fun AppNav() {
 
             ProfileScreen(
                 onBackClick = { navController.popBackStack() },
-                onSaveClick = { navController.popBackStack() },
                 onNavigateToHome = {
                     navController.navigate("home") {
                         popUpTo("home") { inclusive = true }
@@ -360,6 +442,9 @@ fun AppNav() {
 
         // Activity/History Screen
         composable("activity") {
+            val historyViewModel: HistoryViewModel = viewModel()
+            val historyState by historyViewModel.historyState.collectAsState()
+
             HistoryScreen(
                 onNavigateToHome = {
                     navController.navigate("home") {
@@ -375,7 +460,10 @@ fun AppNav() {
                     navController.navigate("settings") {
                         launchSingleTop = true
                     }
-                }
+                },
+                proofHistory = historyState.proofHistory,
+                isLoading = historyState.isLoading,
+                onClearHistory = { historyViewModel.clearHistory() }
             )
         }
 
@@ -411,8 +499,15 @@ fun AppNav() {
                     }
                 },
                 onLogout = {
-                    navController.navigate("welcome") {
+                    navController.navigate("splash") {
                         popUpTo(0) { inclusive = true }
+                    }
+                },
+                onDeleteWallet = {
+                    settingsViewModel.deleteWallet {
+                        navController.navigate("splash") {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 },
                 userName = settingsState.userName,
@@ -538,5 +633,149 @@ fun AppNav() {
                 onBack = { navController.popBackStack() }
             )
         }
+    } // end NavHost
+
+    // ==================== SESSION LOCK OVERLAY ====================
+    if (isSessionLocked) {
+        LockScreenOverlay(
+            onUnlocked = { isSessionLocked = false }
+        )
     }
+    } // end Box
+}
+
+// ==================== SPLASH CONTENT ====================
+
+@Composable
+private fun SplashContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SplashDark),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Shield icon
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                SplashCyan.copy(alpha = 0.3f),
+                                Color(0xFF1A2332)
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = SplashCyan,
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "ZK Passport",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Privacy-preserving digital identity",
+                color = Color.Gray,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            CircularProgressIndicator(
+                color = SplashCyan,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+// ==================== LOCK SCREEN OVERLAY ====================
+
+/**
+ * Full-screen lock overlay that appears when the app returns from background.
+ * Uses its own AuthViewModel instance to verify PIN independently.
+ * Preserves the user's navigation state underneath.
+ */
+@Composable
+private fun LockScreenOverlay(onUnlocked: () -> Unit) {
+    val authViewModel: AuthViewModel = viewModel(key = "lock_overlay_auth")
+    val uiState by authViewModel.uiState.collectAsState()
+    val unlockPin by authViewModel.unlockPin.collectAsState()
+    val isBiometricEnabled by authViewModel.isBiometricEnabled.collectAsState()
+    val isBiometricAvailable = authViewModel.isBiometricAvailable
+
+    val context = LocalContext.current
+    val activity = context as? androidx.fragment.app.FragmentActivity
+
+    // Reset state each time overlay appears
+    LaunchedEffect(Unit) {
+        authViewModel.resetUnlock()
+
+        // Auto-trigger biometric after short delay
+        kotlinx.coroutines.delay(300)
+        val shouldShowBiometric = authViewModel.isBiometricEnabled.value &&
+                authViewModel.isBiometricAvailable
+        if (shouldShowBiometric && activity != null) {
+            authViewModel.getBiometricHelper().authenticate(
+                activity = activity,
+                onSuccess = { authViewModel.unlockWithBiometric() },
+                onError = { error -> authViewModel.setBiometricError(error) },
+                onUsePin = { /* User chose to use PIN instead */ }
+            )
+        }
+    }
+
+    // Handle unlock success
+    LaunchedEffect(uiState.isUnlocked) {
+        if (uiState.isUnlocked) {
+            authViewModel.resetUnlock()
+            onUnlocked()
+        }
+    }
+
+    // Block back button on lock screen
+    BackHandler { /* Do nothing - can't dismiss lock screen */ }
+
+    UnlockWalletScreen(
+        onBackClick = { /* No back from lock screen */ },
+        showBackButton = false,
+        isLockedOut = uiState.isLockedOut,
+        externalPin = unlockPin,
+        errorMessage = uiState.errorMessage,
+        isLoading = uiState.isLoading,
+        onDigitClick = { digit -> authViewModel.enterUnlockDigit(digit) },
+        onDeleteClick = { authViewModel.deleteUnlockDigit() },
+        isBiometricEnabled = isBiometricEnabled,
+        isBiometricAvailable = isBiometricAvailable,
+        onBiometricClick = {
+            if (activity != null) {
+                authViewModel.getBiometricHelper().authenticate(
+                    activity = activity,
+                    onSuccess = { authViewModel.unlockWithBiometric() },
+                    onError = { error -> authViewModel.setBiometricError(error) },
+                    onUsePin = { /* User chose PIN */ }
+                )
+            }
+        }
+    )
 }

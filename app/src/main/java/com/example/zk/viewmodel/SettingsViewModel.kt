@@ -64,6 +64,16 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
+     * Delete wallet and clear all data
+     */
+    fun deleteWallet(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            walletDataStore.clearWallet()
+            onComplete()
+        }
+    }
+
+    /**
      * Set app language
      * Uses AppCompatDelegate to change locale at runtime
      */

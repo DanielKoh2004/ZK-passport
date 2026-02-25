@@ -14,7 +14,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,20 +35,54 @@ private val AccentGreen = Color(0xFF4CAF50)
 fun HistoryScreen(
     onNavigateToHome: () -> Unit = {},
     onNavigateToGenerateProof: () -> Unit = {},
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    proofHistory: List<WalletDataStore.ProofHistoryEntry> = emptyList(),
+    isLoading: Boolean = false,
+    onClearHistory: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val walletDataStore = remember { WalletDataStore(context) }
-    val proofHistory by walletDataStore.proofHistory.collectAsState(initial = emptyList())
-
     var selectedFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "Success", "Failed")
+    var showClearDialog by remember { mutableStateOf(false) }
 
     // Apply filter
     val filteredHistory = when (selectedFilter) {
         "Success" -> proofHistory.filter { it.success }
         "Failed" -> proofHistory.filter { !it.success }
         else -> proofHistory
+    }
+
+    // Clear history confirmation dialog
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = {
+                Text(
+                    text = "Clear History",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to clear all proof history? This action cannot be undone.",
+                    color = Color.Gray
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onClearHistory()
+                    showClearDialog = false
+                }) {
+                    Text("Clear", color = Color(0xFFFF5252))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) {
+                    Text("Cancel", color = AccentCyan)
+                }
+            },
+            containerColor = CardBackground
+        )
     }
 
     Scaffold(
@@ -62,6 +95,17 @@ fun HistoryScreen(
                         color = Color.White,
                         fontWeight = FontWeight.Medium
                     )
+                },
+                actions = {
+                    if (proofHistory.isNotEmpty()) {
+                        IconButton(onClick = { showClearDialog = true }) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = "Clear History",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = DarkBackground
@@ -82,6 +126,62 @@ fun HistoryScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
+            // Summary Stats
+            if (proofHistory.isNotEmpty()) {
+                val successCount = proofHistory.count { it.success }
+                val failedCount = proofHistory.count { !it.success }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Total proofs
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = "${proofHistory.size}", color = AccentCyan, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "Total", color = Color.Gray, fontSize = 12.sp)
+                        }
+                    }
+                    // Successful
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = "$successCount", color = AccentGreen, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "Success", color = Color.Gray, fontSize = 12.sp)
+                        }
+                    }
+                    // Failed
+                    Card(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = "$failedCount", color = Color(0xFFFF5252), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "Failed", color = Color.Gray, fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // Filter Chips
             Row(
                 modifier = Modifier.fillMaxWidth(),

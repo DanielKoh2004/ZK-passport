@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -37,6 +38,8 @@ private val AccentCyan = Color(0xFF00D9FF)
 fun UnlockWalletScreen(
     onBackClick: () -> Unit = {},
     onUnlockSuccess: () -> Unit = {},
+    showBackButton: Boolean = true,
+    isLockedOut: Boolean = false,
     externalPin: String? = null,
     errorMessage: String? = null,
     isLoading: Boolean = false,
@@ -89,12 +92,14 @@ fun UnlockWalletScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
+                    if (showBackButton) {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -201,7 +206,9 @@ fun UnlockWalletScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             // Number Pad
+            val padAlpha = if (isLockedOut) 0.3f else 1f
             Column(
+                modifier = Modifier.graphicsLayer(alpha = padAlpha),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {

@@ -3,14 +3,15 @@ package com.example.zk.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -59,6 +60,7 @@ fun SettingsScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onLogout: () -> Unit = {},
+    onDeleteWallet: () -> Unit = {},
     userName: String = "User",
     passportExpiry: String = "",
     hasCredential: Boolean = false,
@@ -71,6 +73,11 @@ fun SettingsScreen(
 ) {
     var showBiometricDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showFaqDialog by remember { mutableStateOf(false) }
+
+    val userInitial = userName.firstOrNull()?.uppercaseChar() ?: 'U'
 
     // Get current language display name
     val currentLanguageDisplay = supportedLanguages.find { it.code == currentLanguage }?.displayName ?: "English"
@@ -164,6 +171,114 @@ fun SettingsScreen(
         )
     }
 
+    // Logout confirmation dialog
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text(
+                    text = "Logout",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to logout? You will need your PIN to unlock the wallet again.",
+                    color = Color.Gray
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) {
+                    Text("Logout", color = AccentCyan)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                }
+            },
+            containerColor = CardBackground
+        )
+    }
+
+    // Delete wallet confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = {
+                Text(
+                    text = "Delete Wallet",
+                    color = ErrorRed,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "This will permanently delete your wallet, including your PIN, passport data, proof history, and all stored credentials. This action cannot be undone.",
+                    color = Color.Gray
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    onDeleteWallet()
+                }) {
+                    Text("Delete Everything", color = ErrorRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.cancel), color = AccentCyan)
+                }
+            },
+            containerColor = CardBackground
+        )
+    }
+
+    // FAQ dialog
+    if (showFaqDialog) {
+        AlertDialog(
+            onDismissRequest = { showFaqDialog = false },
+            title = {
+                Text(
+                    text = "Frequently Asked Questions",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    FaqItem(
+                        question = "What is a ZK proof?",
+                        answer = "A zero-knowledge proof lets you prove something about yourself (e.g., you are over 18) without revealing the underlying data."
+                    )
+                    FaqItem(
+                        question = "Is my passport data stored online?",
+                        answer = "No. All passport data is stored locally on your device only. Nothing is sent to any server."
+                    )
+                    FaqItem(
+                        question = "What happens if I delete my wallet?",
+                        answer = "All local data including credentials, proof history, and PIN will be permanently erased. You can create a new wallet afterwards."
+                    )
+                    FaqItem(
+                        question = "Can I recover my wallet?",
+                        answer = "No. Since data is stored only on your device with no cloud backup, wallet deletion is permanent."
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFaqDialog = false }) {
+                    Text(stringResource(R.string.ok), color = AccentCyan)
+                }
+            },
+            containerColor = CardBackground
+        )
+    }
+
     Scaffold(
         containerColor = DarkBackground,
         topBar = {
@@ -197,10 +312,11 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Profile Avatar
+            // Profile Avatar with User Initial
             Box(
                 contentAlignment = Alignment.BottomEnd
             ) {
@@ -208,32 +324,33 @@ fun SettingsScreen(
                     modifier = Modifier
                         .size(100.dp)
                         .clip(CircleShape)
-                        .background(Color.Gray)
+                        .background(Color(0xFF2A3A4A))
                         .border(3.dp, AccentCyan, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Placeholder for profile image
-                    Icon(
-                        Icons.Filled.Person,
-                        contentDescription = "Profile",
-                        tint = Color.White,
-                        modifier = Modifier.size(50.dp)
+                    Text(
+                        text = "$userInitial",
+                        color = AccentCyan,
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-                // Verified badge
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(AccentCyan),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Outlined.Check,
-                        contentDescription = "Verified",
-                        tint = DarkBackground,
-                        modifier = Modifier.size(18.dp)
-                    )
+                // Verified badge (only if credential exists)
+                if (hasCredential) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF4CAF50)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Check,
+                            contentDescription = "Verified",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -343,14 +460,14 @@ fun SettingsScreen(
             SettingsMenuItem(
                 icon = Icons.Outlined.Info,
                 title = stringResource(R.string.faq),
-                onClick = { }
+                onClick = { showFaqDialog = true }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Logout Button
             OutlinedButton(
-                onClick = onLogout,
+                onClick = { showLogoutDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
@@ -379,7 +496,7 @@ fun SettingsScreen(
 
             // Delete Account Button
             TextButton(
-                onClick = { },
+                onClick = { showDeleteDialog = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -391,6 +508,24 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+@Composable
+private fun FaqItem(question: String, answer: String) {
+    Column {
+        Text(
+            text = question,
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = answer,
+            color = Color.Gray,
+            fontSize = 13.sp
+        )
     }
 }
 

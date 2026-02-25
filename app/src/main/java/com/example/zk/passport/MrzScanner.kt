@@ -49,9 +49,10 @@ class MrzScanner {
     }
 
     /**
-     * Extract MRZ data from recognized text
+     * Extract MRZ data from recognized text.
+     * Public so it can be called from camera frame analysis.
      */
-    private fun extractMrzData(text: String): MrzData? {
+    fun extractMrzData(text: String): MrzData? {
         Log.d(TAG, "Recognized text: $text")
 
         // Split into lines and clean up

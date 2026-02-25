@@ -13,3 +13,22 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Node / backend
+node_modules/
+issuer-backend/node_modules/
+issuer-backend/.env
+issuer-backend/package-lock.json
+
+# Circom / snarkjs artifacts
+passport_js/
+*.r1cs
+*.sym
+*.ptau
+*.zkey
+*.wtns
+proof.json
+public.json
+
+# OS junk
+Thumbs.db

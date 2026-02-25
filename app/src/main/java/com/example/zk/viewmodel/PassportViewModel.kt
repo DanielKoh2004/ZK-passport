@@ -11,10 +11,17 @@ import com.example.zk.data.MrzData
 import com.example.zk.data.PassportData
 import com.example.zk.data.PassportReadingState
 import com.example.zk.data.WalletDataStore
+import com.example.zk.network.IssuerApiClient
+import com.example.zk.network.IssuePassportRequest
 import com.example.zk.passport.MrzScanner
 import com.example.zk.passport.PassportNfcReader
+import com.example.zk.util.CryptoManager
+import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 /**
  * ViewModel for passport scanning and wallet creation
@@ -232,10 +239,12 @@ class PassportViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * Create local credential from passport data
+     * Create credential from passport data by calling the Issuer Backend API.
      *
-     * IMPORTANT: Raw passport data is NOT stored
-     * Only derived credentials (hashes, commitments) are saved
+     * 1. Uses CryptoManager to get or generate the device DID.
+     * 2. Converts passport fields to ZK-friendly integers.
+     * 3. Calls the Issuer API on Dispatchers.IO.
+     * 4. Stores the full signed Verifiable Credential JSON locally.
      */
     private suspend fun createCredentialFromPassport(passport: PassportData) {
         Log.d(TAG, "Creating credential from passport data...")
@@ -245,7 +254,7 @@ class PassportViewModel(application: Application) : AndroidViewModel(application
         Log.d(TAG, "Gender: ${passport.gender}")
         Log.d(TAG, "Doc Number: ${passport.documentNumber}")
 
-        // Save passport data to profile
+        // Save passport data to profile (display purposes)
         walletDataStore.savePassportData(
             fullName = passport.fullName,
             nationality = passport.nationality,
@@ -256,49 +265,68 @@ class PassportViewModel(application: Application) : AndroidViewModel(application
             issuingCountry = passport.issuingCountry
         )
 
-        // Create credential JSON with only necessary derived data
-        // In production: create proper ZK commitments
-        val credentialJson = """
-            {
-                "type": "passport_credential",
-                "issuer": "local_wallet",
-                "issued_at": ${System.currentTimeMillis()},
-                "claims": {
-                    "name_hash": "${hashValue(passport.fullName)}",
-                    "nationality": "${passport.nationality}",
-                    "dob_year": "${passport.dateOfBirth.take(2)}",
-                    "is_adult": ${passport.calculateAge() >= 18},
-                    "document_valid": ${!passport.isExpired()},
-                    "authentic": ${passport.isAuthentic}
-                },
-                "metadata": {
-                    "document_country": "${passport.issuingCountry}",
-                    "created_locally": true,
-                    "no_raw_data_stored": true
-                }
+        try {
+            // 1. Get or generate device DID from Android KeyStore
+            val did = withContext(Dispatchers.IO) {
+                CryptoManager.getDeviceDid()
             }
-        """.trimIndent()
+            Log.d(TAG, "Device DID: $did")
 
-        walletDataStore.storeCredential(credentialJson)
+            // 2. Convert passport fields to ZK-friendly integers
+            val dobInt = formatDobToInt(passport.dateOfBirth)   // YYMMDD -> YYYYMMDD
+            val passportNumberInt = stringToInt(passport.documentNumber)
+            val nationalityInt = stringToInt(passport.nationality)
 
-        Log.d(TAG, "Passport data saved to profile successfully!")
+            Log.d(TAG, "ZK inputs -> dob=$dobInt, passport#=$passportNumberInt, nat=$nationalityInt")
 
-        _uiState.value = _uiState.value.copy(
-            step = PassportScanStep.COMPLETE,
-            isLoading = false,
-            credentialCreated = true
-        )
+            // 3. Call Issuer API on background thread
+            val response = withContext(Dispatchers.IO) {
+                IssuerApiClient.api.issuePassport(
+                    IssuePassportRequest(
+                        did = did,
+                        name = passport.fullName,
+                        dateOfBirth = dobInt,
+                        passportNumber = passportNumberInt,
+                        nationality = nationalityInt
+                    )
+                )
+            }
+
+            // 4. Serialize full VC to JSON and persist
+            val vcJson = Gson().toJson(response.verifiableCredential)
+            walletDataStore.storeCredential(vcJson)
+
+            Log.d(TAG, "Verifiable Credential stored successfully!")
+
+            _uiState.value = _uiState.value.copy(
+                step = PassportScanStep.COMPLETE,
+                isLoading = false,
+                credentialCreated = true
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to obtain Verifiable Credential from issuer", e)
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = "Could not reach issuer backend: ${e.localizedMessage}"
+            )
+        }
     }
 
-    /**
-     * Simple hash function for demo
-     * In production: use proper cryptographic hash
-     */
-    private fun hashValue(value: String): String {
-        return java.security.MessageDigest.getInstance("SHA-256")
-            .digest(value.toByteArray())
-            .joinToString("") { "%02x".format(it) }
-            .take(16)
+    // ── Helper: YYMMDD → YYYYMMDD integer ────────────────────────────────────
+    private fun formatDobToInt(dob: String): Int {
+        if (dob.length != 6) return 0
+        val yy = dob.substring(0, 2).toIntOrNull() ?: return 0
+        val fullYear = if (yy > 30) 1900 + yy else 2000 + yy
+        val mmdd = dob.substring(2) // "MMDD"
+        return "$fullYear$mmdd".toIntOrNull() ?: 0
+    }
+
+    // ── Helper: deterministic string → positive Int ──────────────────────────
+    private fun stringToInt(value: String): Int {
+        // Try direct parse first (e.g. already numeric passport numbers)
+        value.toIntOrNull()?.let { return abs(it) }
+        // Deterministic hash for alpha-numeric values like nationality codes
+        return abs(value.hashCode()) % 1_000_000_000
     }
 
     /**

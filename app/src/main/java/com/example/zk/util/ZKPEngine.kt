@@ -120,14 +120,7 @@ class ZKPEngine(private val context: Context) {
                     webView!!.addJavascriptInterface(bridge, "AndroidBridge")
                 }
 
-                val inputJson = """
-                    {
-                        "dateOfBirth": "$dob",
-                        "passportNumber": "$passportNumber",
-                        "nationality": "$nationality",
-                        "currentAgeThreshold": "$ageThreshold"
-                    }
-                """.trimIndent()
+                val inputJson = """{"dateOfBirth":"$dob","passportNumber":"$passportNumber","nationality":"$nationality","currentAgeThreshold":"$ageThreshold"}"""
 
                 Log.d(TAG, "Injecting JS call with input: $inputJson")
 

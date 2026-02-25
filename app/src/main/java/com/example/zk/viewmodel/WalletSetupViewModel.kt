@@ -38,7 +38,7 @@ class WalletSetupViewModel(application: Application) : AndroidViewModel(applicat
     private val _enrollmentComplete = MutableStateFlow(false)
     val enrollmentComplete: StateFlow<Boolean> = _enrollmentComplete.asStateFlow()
 
-    // Extracted data from passport (mock)
+    // Extracted data from passport (set by real passport scan flow)
     private val _extractedName = MutableStateFlow("")
     val extractedName: StateFlow<String> = _extractedName.asStateFlow()
 
@@ -110,40 +110,16 @@ class WalletSetupViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     /**
-     * Simulate passport enrollment
-     * In production: NFC read, OCR, or manual entry
-     * Raw passport data is processed locally only - NOT stored or sent to blockchain
+     * Mark passport enrollment as complete.
+     * Called after the real passport scan flow stores the credential
+     * via PassportViewModel → IssuerApi → WalletDataStore.
      */
-    fun simulatePassportEnrollment() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
-            // Simulate processing delay
-            kotlinx.coroutines.delay(2000)
-
-            // Mock extracted passport data
-            _extractedName.value = "Alex Morgan"
-
-            // Create mock credential (in production: generate from passport data)
-            val mockCredential = """
-                {
-                    "type": "passport_credential",
-                    "issuer": "local_wallet",
-                    "issued_at": ${System.currentTimeMillis()},
-                    "claims": {
-                        "name_hash": "hashed_value",
-                        "dob_commitment": "commitment_value",
-                        "nationality_commitment": "commitment_value"
-                    }
-                }
-            """.trimIndent()
-
-            // Store credential locally (encrypted in production)
-            walletDataStore.storeCredential(mockCredential)
-
-            _enrollmentComplete.value = true
-            _uiState.value = _uiState.value.copy(isLoading = false, enrollmentComplete = true)
+    fun markEnrollmentComplete(name: String = "") {
+        if (name.isNotEmpty()) {
+            _extractedName.value = name
         }
+        _enrollmentComplete.value = true
+        _uiState.value = _uiState.value.copy(enrollmentComplete = true)
     }
 
     /**

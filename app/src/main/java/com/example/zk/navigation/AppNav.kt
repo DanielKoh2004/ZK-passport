@@ -2,7 +2,9 @@ package com.example.zk.navigation
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
 import com.example.zk.LocalPassportViewModel
 import com.example.zk.ui.screens.*
 import com.example.zk.viewmodel.AuthViewModel
@@ -254,6 +256,11 @@ fun AppNav() {
                     navController.navigate("settings") {
                         launchSingleTop = true
                     }
+                },
+                onGenerateProof = { proofType, disclosureMask ->
+                    navController.navigate("my_qr/$proofType/$disclosureMask") {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -288,6 +295,11 @@ fun AppNav() {
                 },
                 onNavigateToChangePin = {
                     navController.navigate("change_pin") {
+                        launchSingleTop = true
+                    }
+                },
+                onScanPassport = {
+                    navController.navigate("scan_passport") {
                         launchSingleTop = true
                     }
                 },
@@ -506,6 +518,24 @@ fun AppNav() {
                 },
                 onHelp = { /* TODO: Show help */ },
                 onSwitch = { /* TODO: Switch camera */ }
+            )
+        }
+
+        // ==================== ZK PROOF / QR ====================
+
+        composable(
+            route = "my_qr/{proofType}/{disclosureMask}",
+            arguments = listOf(
+                navArgument("proofType") { type = NavType.IntType; defaultValue = 0 },
+                navArgument("disclosureMask") { type = NavType.IntType; defaultValue = 0 }
+            )
+        ) { backStackEntry ->
+            val proofType = backStackEntry.arguments?.getInt("proofType") ?: 0
+            val disclosureMask = backStackEntry.arguments?.getInt("disclosureMask") ?: 0
+            MyQrScreen(
+                proofType = proofType,
+                disclosureMask = disclosureMask,
+                onBack = { navController.popBackStack() }
             )
         }
     }

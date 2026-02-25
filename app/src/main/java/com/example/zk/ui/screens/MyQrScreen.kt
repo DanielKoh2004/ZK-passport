@@ -35,14 +35,40 @@ private val DarkBackground = Color(0xFF0D1421)
 private val CardBackground = Color(0xFF1A2332)
 private val AccentCyan = Color(0xFF00D9FF)
 
-// ── Default age threshold: proves user ≥ 18 ──────────────────────────────
-private const val AGE_THRESHOLD_18 = 20080101
+// Proof type constants matching GenerateProofScreen template indices
+const val PROOF_TYPE_AGE_18 = 0
+const val PROOF_TYPE_NATIONALITY = 1
+const val PROOF_TYPE_CREDENTIAL_VALID = 2
+
+private fun proofTypeKey(type: Int): String = when (type) {
+    PROOF_TYPE_NATIONALITY -> "nationality"
+    PROOF_TYPE_CREDENTIAL_VALID -> "credential_valid"
+    else -> "age_18"
+}
+
+private fun proofTypeLabel(type: Int): String = when (type) {
+    PROOF_TYPE_NATIONALITY -> "Nationality"
+    PROOF_TYPE_CREDENTIAL_VALID -> "Credential Valid"
+    else -> "Age ≥ 18"
+}
+
+private fun proofTypeSubtitle(type: Int): String = when (type) {
+    PROOF_TYPE_NATIONALITY -> "Nationality — Zero\u2011Knowledge Proof"
+    PROOF_TYPE_CREDENTIAL_VALID -> "Credential Valid — Zero\u2011Knowledge Proof"
+    else -> "Age ≥ 18 — Zero\u2011Knowledge Proof"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyQrScreen(
+    proofType: Int = PROOF_TYPE_AGE_18,
+    disclosureMask: Int = 0,
     onBack: () -> Unit = {}
 ) {
+    // Decode bitmask: bit0=photo, bit1=name, bit2=nationality, bit3=gender
+    val discloseName = disclosureMask and 2 != 0
+    val discloseNationality = disclosureMask and 4 != 0
+    val discloseGender = disclosureMask and 8 != 0
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val walletDataStore = remember { WalletDataStore(context) }
@@ -83,30 +109,64 @@ fun MyQrScreen(
                 val passportNumber = subject.get("passportNumber").asInt
                 val nationality = subject.get("nationality").asInt
 
-                Log.d(TAG, "Extracted inputs – dob=$dob, passport#=$passportNumber, nat=$nationality")
+                // Resolve the user's full name for optional disclosure
+                val fullName = walletDataStore.passportFullName.first().ifBlank {
+                    subject.get("holderDid")?.asString ?: "Unknown"
+                }
+                val userNationality = walletDataStore.passportNationality.first()
+                val userGender = walletDataStore.passportGender.first()
 
-                // 3. Generate ZK proof via WebView engine
+                Log.d(TAG, "Extracted inputs – dob=$dob, passport#=$passportNumber, nat=$nationality, proofType=$proofType")
+
+                // 3. Compute a dynamic age threshold (18 years before today)
+                val cal = java.util.Calendar.getInstance()
+                val ageThreshold = (cal.get(java.util.Calendar.YEAR) - 18) * 10000 +
+                        (cal.get(java.util.Calendar.MONTH) + 1) * 100 +
+                        cal.get(java.util.Calendar.DAY_OF_MONTH)
+
+                // 4. Generate ZK proof via WebView engine
                 Log.d(TAG, "Calling ZKPEngine.computeProof() …")
                 val result = zkpEngine.computeProof(
                     dob = dob,
                     passportNumber = passportNumber,
                     nationality = nationality,
-                    ageThreshold = AGE_THRESHOLD_18
+                    ageThreshold = ageThreshold
                 )
                 Log.d(TAG, "Proof received from ZKPEngine")
 
-                // 4. Build compact JSON for the QR code
-                val qrPayload = """{"proof":${result.proofJson},"publicSignals":${result.publicSignalsJson}}"""
+                // 5. Build compact JSON for the QR code
+                val qrObject = JsonObject().apply {
+                    addProperty("type", proofTypeKey(proofType))
+                    addProperty("label", proofTypeLabel(proofType))
+                    if (discloseName) addProperty("name", fullName)
+                    if (discloseNationality) addProperty("nationality", userNationality)
+                    if (discloseGender) addProperty("gender", userGender)
+                    add("proof", Gson().fromJson(result.proofJson, JsonObject::class.java))
+                    add("publicSignals", Gson().fromJson(result.publicSignalsJson, com.google.gson.JsonArray::class.java))
+                }
+                val qrPayload = Gson().toJson(qrObject)
                 Log.d(TAG, "QR payload length: ${qrPayload.length}")
 
                 proofSummary = "Proof generated • ${qrPayload.length} bytes"
 
-                // 5. Generate QR bitmap (off main thread)
+                // 6. Generate QR bitmap (off main thread)
                 val bitmap = withContext(Dispatchers.Default) {
                     generateQrBitmap(qrPayload, size = 1024)
                 }
                 qrBitmap = bitmap
                 Log.d(TAG, "QR bitmap generated: ${bitmap.width}x${bitmap.height}")
+
+                // 7. Save to proof history
+                walletDataStore.addProofHistoryEntry(
+                    WalletDataStore.ProofHistoryEntry(
+                        proofType = proofTypeKey(proofType),
+                        label = proofTypeLabel(proofType),
+                        timestamp = System.currentTimeMillis(),
+                        disclosedName = discloseName,
+                        success = true,
+                        proofSizeBytes = qrPayload.length
+                    )
+                )
 
             } catch (e: Exception) {
                 Log.e(TAG, "Proof generation failed", e)
@@ -199,7 +259,7 @@ fun MyQrScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Age ≥ 18 — Zero‑Knowledge Proof",
+                        proofTypeSubtitle(proofType),
                         color = AccentCyan,
                         fontSize = 14.sp
                     )

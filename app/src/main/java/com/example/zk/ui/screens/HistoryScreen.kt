@@ -14,23 +14,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.zk.data.WalletDataStore
 import com.example.zk.ui.theme.ZKTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val DarkBackground = Color(0xFF0D1421)
 private val CardBackground = Color(0xFF1A2332)
 private val AccentCyan = Color(0xFF00D9FF)
 private val AccentGreen = Color(0xFF4CAF50)
-
-data class ActivityItem(
-    val location: String,
-    val dateTime: String,
-    val conditions: List<String>,
-    val isValid: Boolean = true
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,26 +38,19 @@ fun HistoryScreen(
     onNavigateToGenerateProof: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {}
 ) {
-    var selectedFilter by remember { mutableStateOf("All") }
-    val filters = listOf("All", "Success", "Failed", "This week")
+    val context = LocalContext.current
+    val walletDataStore = remember { WalletDataStore(context) }
+    val proofHistory by walletDataStore.proofHistory.collectAsState(initial = emptyList())
 
-    val activities = listOf(
-        ActivityItem(
-            location = "JFK Airport, New York",
-            dateTime = "2024-12-14 14:30",
-            conditions = listOf("Age ≥ 18", "Valid Passport")
-        ),
-        ActivityItem(
-            location = "LAX Airport, Los Angeles",
-            dateTime = "2024-12-10 09:15",
-            conditions = listOf("Valid Passport", "Citizenship")
-        ),
-        ActivityItem(
-            location = "Border Checkpoint, TX",
-            dateTime = "2024-12-05 16:45",
-            conditions = listOf("Age ≥ 21", "Valid Passport")
-        )
-    )
+    var selectedFilter by remember { mutableStateOf("All") }
+    val filters = listOf("All", "Success", "Failed")
+
+    // Apply filter
+    val filteredHistory = when (selectedFilter) {
+        "Success" -> proofHistory.filter { it.success }
+        "Failed" -> proofHistory.filter { !it.success }
+        else -> proofHistory
+    }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -106,15 +98,144 @@ fun HistoryScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Activity List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(activities) { activity ->
-                    ActivityCard(activity = activity)
+            if (filteredHistory.isEmpty()) {
+                // Empty state
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Outlined.Refresh,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (selectedFilter == "All")
+                                "No proof history yet.\nGenerate your first proof to see it here."
+                            else
+                                "No ${selectedFilter.lowercase()} proofs found.",
+                            color = Color.Gray,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                // Activity List
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredHistory) { entry ->
+                        ProofHistoryCard(entry = entry)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProofHistoryCard(entry: WalletDataStore.ProofHistoryEntry) {
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    val dateString = dateFormat.format(Date(entry.timestamp))
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = entry.label,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                // Status Badge
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (entry.success) AccentGreen.copy(alpha = 0.2f)
+                    else Color.Red.copy(alpha = 0.2f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (entry.success) Icons.Filled.CheckCircle
+                            else Icons.Outlined.Close,
+                            contentDescription = null,
+                            tint = if (entry.success) AccentGreen else Color.Red,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (entry.success) "Valid" else "Failed",
+                            color = if (entry.success) AccentGreen else Color.Red,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Date Time
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.DateRange,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = dateString, color = Color.Gray, fontSize = 13.sp)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Details
+            Text(text = "Details:", color = Color.Gray, fontSize = 12.sp)
+            Spacer(modifier = Modifier.height(6.dp))
+
+            DetailRow(label = "Proof type", value = entry.proofType)
+            DetailRow(label = "Size", value = "${entry.proofSizeBytes} bytes")
+            DetailRow(
+                label = "Name disclosed",
+                value = if (entry.disclosedName) "Yes" else "No"
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .background(AccentCyan, RoundedCornerShape(2.dp))
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = "$label: ", color = Color.Gray, fontSize = 13.sp)
+        Text(text = value, color = Color.White, fontSize = 13.sp)
     }
 }
 
@@ -146,108 +267,6 @@ private fun FilterChipItem(
             selected = selected
         )
     )
-}
-
-@Composable
-private fun ActivityCard(activity: ActivityItem) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Header Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = activity.location,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                // Valid Badge
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = AccentGreen.copy(alpha = 0.2f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = AccentGreen,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Valid",
-                            color = AccentGreen,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Date Time
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Outlined.DateRange,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = activity.dateTime,
-                    color = Color.Gray,
-                    fontSize = 13.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Conditions Section
-            Text(
-                text = "Conditions Verified:",
-                color = Color.Gray,
-                fontSize = 12.sp
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Conditions List
-            activity.conditions.forEach { condition ->
-                Row(
-                    modifier = Modifier.padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(4.dp)
-                            .background(AccentCyan, RoundedCornerShape(2.dp))
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = condition,
-                        color = Color.White,
-                        fontSize = 13.sp
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable

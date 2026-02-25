@@ -3,6 +3,39 @@
 <head>
     <meta charset="utf-8" />
     <title>ZK Passport Prover</title>
+    <script>
+    // Polyfill: Android WebView's fetch() rejects file:// URLs,
+    // but XMLHttpRequest works with allowFileAccessFromFileURLs=true.
+    // snarkjs uses fetch() to load .wasm and .zkey files, so we
+    // redirect those GETs through XHR instead.
+    (function() {
+        var _fetch = window.fetch;
+        window.fetch = function(input, init) {
+            if (init && init.method && init.method !== 'GET') {
+                return _fetch.apply(this, arguments);
+            }
+            var url = (typeof input === 'string') ? input
+                    : (input && input.url) ? input.url : null;
+            if (!url) return _fetch.apply(this, arguments);
+
+            return new Promise(function(resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = function() {
+                    resolve(new Response(xhr.response, {
+                        status: 200,
+                        statusText: 'OK'
+                    }));
+                };
+                xhr.onerror = function() {
+                    reject(new TypeError('Failed to fetch ' + url));
+                };
+                xhr.send();
+            });
+        };
+    })();
+    </script>
     <script src="snarkjs.min.js"></script>
 </head>
 <body>

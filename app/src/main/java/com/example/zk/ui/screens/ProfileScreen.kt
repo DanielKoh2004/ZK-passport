@@ -44,6 +44,7 @@ fun ProfileScreen(
     onNavigateToGenerateProof: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToChangePin: () -> Unit = {},
+    onScanPassport: () -> Unit = {},
     // Profile data from passport scan
     hasCredential: Boolean = false,
     userName: String = "",
@@ -409,7 +410,7 @@ fun ProfileScreen(
             } else {
                 // Show scan passport button
                 Button(
-                    onClick = { /* TODO: Navigate to scan passport */ },
+                    onClick = onScanPassport,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = AccentCyan)

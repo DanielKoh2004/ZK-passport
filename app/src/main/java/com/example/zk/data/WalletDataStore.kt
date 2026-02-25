@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.map
 import java.security.MessageDigest
 import java.security.SecureRandom
 import android.util.Base64
+import com.example.zk.util.CryptoManager
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 /**
  * DataStore for local wallet state.
@@ -48,6 +51,9 @@ class WalletDataStore(private val context: Context) {
         // Language preference key
         private val LANGUAGE_CODE = stringPreferencesKey("language_code")
 
+        // Proof history key (JSON array of ProofHistoryEntry)
+        private val PROOF_HISTORY = stringPreferencesKey("proof_history")
+
         // Generate a secure random salt
         private fun generateSalt(): ByteArray {
             val salt = ByteArray(16)
@@ -80,7 +86,7 @@ class WalletDataStore(private val context: Context) {
         prefs[USER_NAME] ?: "User"
     }
 
-    // Get public key (mock)
+    // Get public key
     val publicKey: Flow<String?> = context.walletDataStore.data.map { prefs ->
         prefs[PUBLIC_KEY]
     }
@@ -169,7 +175,7 @@ class WalletDataStore(private val context: Context) {
     }
 
     /**
-     * Initialize wallet with PIN and generate key pair (mock)
+     * Initialize wallet with PIN and generate key pair using Android KeyStore.
      * This creates the local wallet state - NO cloud account, NO blockchain storage
      */
     suspend fun initializeWallet(pin: String, userName: String = "User"): Boolean {
@@ -178,17 +184,16 @@ class WalletDataStore(private val context: Context) {
             val saltBase64 = Base64.encodeToString(salt, Base64.NO_WRAP)
             val pinHash = hashPin(pin, salt)
 
-            // Generate mock key pair (in production, use Android Keystore)
-            val mockPublicKey = generateMockKeyPair()
+            // Generate real EC key pair in Android KeyStore
+            val deviceDid = CryptoManager.getDeviceDid()
 
             context.walletDataStore.edit { prefs ->
                 prefs[WALLET_INITIALIZED] = true
                 prefs[PIN_HASH] = pinHash
                 prefs[PIN_SALT] = saltBase64
-                prefs[PUBLIC_KEY] = mockPublicKey
+                prefs[PUBLIC_KEY] = deviceDid
                 prefs[USER_NAME] = userName
                 prefs[CREDENTIAL_STORED] = false
-                // NOTE: Do NOT write verification history during wallet creation
             }
             true
         } catch (e: Exception) {
@@ -282,17 +287,40 @@ class WalletDataStore(private val context: Context) {
         }
     }
 
-    /**
-     * Generate mock key pair - in production use Android Keystore
-     *
-     * Production implementation should:
-     * 1. Generate key pair in Android Keystore
-     * 2. Use hardware-backed keys if available
-     * 3. Set authentication required for private key access
-     */
-    private fun generateMockKeyPair(): String {
-        val bytes = ByteArray(32)
-        SecureRandom().nextBytes(bytes)
-        return "pk_" + Base64.encodeToString(bytes, Base64.NO_WRAP)
+    // ── Proof history ──────────────────────────────────────────────────────
+
+    /** Single entry in the proof history log. */
+    data class ProofHistoryEntry(
+        val proofType: String,       // "age_18", "nationality", "credential_valid"
+        val label: String,           // "Age ≥ 18", "Nationality", "Credential Valid"
+        val timestamp: Long,         // System.currentTimeMillis()
+        val disclosedName: Boolean,
+        val success: Boolean,
+        val proofSizeBytes: Int
+    )
+
+    /** Flow of all proof history entries (newest first). */
+    val proofHistory: Flow<List<ProofHistoryEntry>> = context.walletDataStore.data.map { prefs ->
+        val json = prefs[PROOF_HISTORY] ?: "[]"
+        try {
+            val type = object : TypeToken<List<ProofHistoryEntry>>() {}.type
+            Gson().fromJson<List<ProofHistoryEntry>>(json, type)
+        } catch (_: Exception) { emptyList() }
+    }
+
+    /** Append a new entry to proof history. */
+    suspend fun addProofHistoryEntry(entry: ProofHistoryEntry) {
+        context.walletDataStore.edit { prefs ->
+            val existing = try {
+                val json = prefs[PROOF_HISTORY] ?: "[]"
+                val type = object : TypeToken<MutableList<ProofHistoryEntry>>() {}.type
+                Gson().fromJson<MutableList<ProofHistoryEntry>>(json, type)
+            } catch (_: Exception) { mutableListOf() }
+
+            existing.add(0, entry) // newest first
+            // Keep at most 50 entries
+            if (existing.size > 50) existing.subList(50, existing.size).clear()
+            prefs[PROOF_HISTORY] = Gson().toJson(existing)
+        }
     }
 }

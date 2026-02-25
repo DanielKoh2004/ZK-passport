@@ -8,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -18,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,8 +36,7 @@ data class DisclosureItem(
     val icon: ImageVector,
     val title: String,
     val subtitle: String? = null,
-    val isSelectable: Boolean = true,
-    val isLocked: Boolean = false
+    val isSelectable: Boolean = true
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,11 +45,14 @@ fun GenerateProofScreen(
     onBackClick: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
     onNavigateToActivity: () -> Unit = {},
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    onGenerateProof: (proofType: Int, disclosureMask: Int) -> Unit = { _, _ -> }
 ) {
     var selectedTemplate by remember { mutableStateOf(0) }
     var passportPhotoSelected by remember { mutableStateOf(false) }
     var fullNameSelected by remember { mutableStateOf(true) }
+    var nationalitySelected by remember { mutableStateOf(false) }
+    var genderSelected by remember { mutableStateOf(false) }
 
     val templates = listOf(
         ProofTemplate("Prove Age ≥ 18", "Verifies over 18 without revealing DOB"),
@@ -72,18 +72,14 @@ fun GenerateProofScreen(
             isSelectable = true
         ),
         DisclosureItem(
-            icon = Icons.Filled.Lock,
-            title = "Passport Number",
-            subtitle = "Not shared",
-            isSelectable = false,
-            isLocked = true
+            icon = Icons.Outlined.Place,
+            title = "Nationality",
+            isSelectable = true
         ),
         DisclosureItem(
-            icon = Icons.Filled.Lock,
-            title = "Date of Birth",
-            subtitle = "Hidden by ZK Proof",
-            isSelectable = false,
-            isLocked = true
+            icon = Icons.Outlined.Person,
+            title = "Gender",
+            isSelectable = true
         )
     )
 
@@ -180,11 +176,19 @@ fun GenerateProofScreen(
                 }
 
                 item {
-                    LockedDisclosureOption(item = disclosureItems[2])
+                    DisclosureOption(
+                        item = disclosureItems[2],
+                        isChecked = nationalitySelected,
+                        onCheckedChange = { nationalitySelected = it }
+                    )
                 }
 
                 item {
-                    LockedDisclosureOption(item = disclosureItems[3])
+                    DisclosureOption(
+                        item = disclosureItems[3],
+                        isChecked = genderSelected,
+                        onCheckedChange = { genderSelected = it }
+                    )
                 }
 
                 // Privacy Notice
@@ -202,7 +206,7 @@ fun GenerateProofScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Only proof is shared; no passport data revealed.",
+                            text = "Only selected fields are shared alongside the ZK proof.",
                             color = AccentGreen,
                             fontSize = 12.sp
                         )
@@ -216,7 +220,13 @@ fun GenerateProofScreen(
 
             // Generate Proof Button
             Button(
-                onClick = { /* TODO: Generate proof */ },
+                onClick = {
+                    val mask = (if (passportPhotoSelected) 1 else 0) or
+                            (if (fullNameSelected) 2 else 0) or
+                            (if (nationalitySelected) 4 else 0) or
+                            (if (genderSelected) 8 else 0)
+                    onGenerateProof(selectedTemplate, mask)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
@@ -321,51 +331,6 @@ private fun DisclosureOption(
                     uncheckedColor = Color.Gray,
                     checkmarkColor = DarkBackground
                 )
-            )
-        }
-    }
-}
-
-@Composable
-private fun LockedDisclosureOption(item: DisclosureItem) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                item.icon,
-                contentDescription = null,
-                tint = Color.Gray,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    color = Color.Gray,
-                    fontSize = 15.sp,
-                    textDecoration = TextDecoration.LineThrough
-                )
-                item.subtitle?.let {
-                    Text(
-                        text = it,
-                        color = Color.Gray.copy(alpha = 0.7f),
-                        fontSize = 11.sp
-                    )
-                }
-            }
-            Icon(
-                Icons.Filled.Lock,
-                contentDescription = "Locked",
-                tint = Color.Gray,
-                modifier = Modifier.size(20.dp)
             )
         }
     }

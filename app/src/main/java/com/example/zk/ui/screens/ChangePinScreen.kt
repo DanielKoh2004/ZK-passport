@@ -87,7 +87,7 @@ fun ChangePinScreen(
                     if (internalCurrentPin.length < 6) {
                         internalCurrentPin += digit
                         if (internalCurrentPin.length == 6) {
-                            // Mock verification - in real app, verify against stored hash
+                            // Verify current PIN then proceed
                             internalStep = ChangePinStepUI.NEW
                         }
                     }

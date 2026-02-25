@@ -87,6 +87,7 @@ fun ScanPassportScreen(
     onEnterManually: () -> Unit = {},
     onBackToScan: () -> Unit = {},
     onRetryNfc: () -> Unit = {},
+    onDevBypassNfc: () -> Unit = {},
     onComplete: () -> Unit = {}
 ) {
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
@@ -188,7 +189,8 @@ fun ScanPassportScreen(
                     NfcScanContent(
                         readingState = readingState,
                         errorMessage = uiState.errorMessage,
-                        onRetry = onRetryNfc
+                        onRetry = onRetryNfc,
+                        onDevBypass = onDevBypassNfc
                     )
                 }
 
@@ -749,7 +751,8 @@ private fun formatDate(yymmdd: String): String {
 private fun NfcScanContent(
     readingState: PassportReadingState,
     errorMessage: String?,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onDevBypass: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -852,6 +855,23 @@ private fun NfcScanContent(
         }
 
         Spacer(modifier = Modifier.height(40.dp))
+
+        // Developer bypass button (REMOVE BEFORE PRODUCTION)
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onDevBypass,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+        ) {
+            Text(
+                "DEV: Bypass NFC & Get Credential",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Tips
         Card(

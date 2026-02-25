@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>ZK Passport Prover</title>
+    <script src="snarkjs.min.js"></script>
+</head>
+<body>
+<script>
+    /**
+     * Generate a Groth16 ZK proof using snarkjs inside a WebView.
+     *
+     * @param {string} inputJsonString - JSON string of circuit inputs.
+     *   Expected keys: dateOfBirth, passportNumber, nationality, currentAgeThreshold
+     *
+     * Results are sent back to Kotlin via the AndroidBridge JavascriptInterface:
+     *   AndroidBridge.onProofSuccess(proofJson, publicSignalsJson)
+     *   AndroidBridge.onProofError(errorString)
+     */
+    async function generateProof(inputJsonString) {
+        console.log("[prover.html] generateProof called");
+        console.log("[prover.html] input:", inputJsonString);
+
+        try {
+            var input = JSON.parse(inputJsonString);
+            console.log("[prover.html] Parsed input:", JSON.stringify(input));
+
+            console.log("[prover.html] Calling snarkjs.groth16.fullProve ...");
+            var result = await snarkjs.groth16.fullProve(
+                input,
+                "passport.wasm",
+                "passport_final.zkey"
+            );
+            console.log("[prover.html] Proof generated successfully");
+
+            var proofJson = JSON.stringify(result.proof);
+            var publicSignalsJson = JSON.stringify(result.publicSignals);
+
+            console.log("[prover.html] proof:", proofJson);
+            console.log("[prover.html] publicSignals:", publicSignalsJson);
+
+            AndroidBridge.onProofSuccess(proofJson, publicSignalsJson);
+        } catch (e) {
+            console.error("[prover.html] Error:", e);
+            try {
+                AndroidBridge.onProofError(e.toString());
+            } catch (bridgeErr) {
+                console.error("[prover.html] AndroidBridge.onProofError also failed:", bridgeErr);
+            }
+        }
+    }
+</script>
+</body>
+</html>

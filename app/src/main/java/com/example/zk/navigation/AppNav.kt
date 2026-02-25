@@ -485,6 +485,7 @@ fun AppNav() {
                 onEnterManually = { passportViewModel.enterMrzManually() },
                 onBackToScan = { passportViewModel.backToMrzScan() },
                 onRetryNfc = { passportViewModel.retryNfcScan() },
+                onDevBypassNfc = { passportViewModel.developerBypassNfc() },
                 onComplete = {
                     navController.navigate("wallet_created") {
                         popUpTo("enrollment") { inclusive = true }

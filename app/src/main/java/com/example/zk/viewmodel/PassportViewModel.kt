@@ -330,6 +330,31 @@ class PassportViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
+     * DEVELOPER BYPASS: Skip NFC scan with mock passport data.
+     * Triggers the real Retrofit network call to the issuer backend.
+     * Remove before production release.
+     */
+    fun developerBypassNfc() {
+        Log.w(TAG, "DEVELOPER BYPASS TRIGGERED: Skipping NFC scan")
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val mockPassport = PassportData(
+                documentNumber = "123456789",
+                dateOfBirth = "040512",
+                expiryDate = "290101",
+                firstName = "Ahmad",
+                lastName = "bin Ibrahim",
+                nationality = "458",
+                gender = "M",
+                issuingCountry = "MYS"
+            )
+            _passportData.value = mockPassport
+            // This calls the private function that triggers the Retrofit network request
+            createCredentialFromPassport(mockPassport)
+        }
+    }
+
+    /**
      * Reset to initial state
      */
     fun reset() {

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -323,6 +324,10 @@ private fun MrzCameraScanContent(
     val textRecognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
     var mrzDetected by remember { mutableStateOf(false) }
+    // Live feedback state
+    var framesAnalyzed by remember { mutableIntStateOf(0) }
+    var lastTextSeen by remember { mutableStateOf("") }
+    var scanHint by remember { mutableStateOf("") }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -387,12 +392,43 @@ private fun MrzCameraScanContent(
                                 textRecognizer.process(inputImage)
                                     .addOnSuccessListener { visionText ->
                                         if (!mrzDetected) {
-                                            val parsed = mrzScanner.extractMrzData(visionText.text)
+                                            framesAnalyzed++
+                                            val rawText = visionText.text
+
+                                            // ── Live feedback based on what we see ──
+                                            if (rawText.isBlank()) {
+                                                scanStatus = "Scanning… (no text detected)"
+                                                scanHint = "Point the camera at the MRZ lines"
+                                            } else {
+                                                // Check for partial MRZ indicators
+                                                val lines = rawText.split("\n")
+                                                    .map { it.replace(" ", "").uppercase() }
+                                                val hasMrzCandidate = lines.any { line ->
+                                                    line.length >= 30 && (
+                                                        line.startsWith("P<") ||
+                                                        line.startsWith("P0") ||
+                                                        line.contains("<<") ||
+                                                        line.matches(Regex("[A-Z0-9<]{30,}"))
+                                                    )
+                                                }
+
+                                                if (hasMrzCandidate) {
+                                                    scanStatus = "MRZ line detected — hold steady…"
+                                                    scanHint = "Keep the passport still"
+                                                } else {
+                                                    scanStatus = "Text detected — looking for MRZ…"
+                                                    scanHint = "Align the 2-line code in the frame"
+                                                }
+                                            }
+
+                                            // ── Try to parse complete MRZ ──
+                                            val parsed = mrzScanner.extractMrzData(rawText)
                                             if (parsed != null && parsed.isValid()) {
                                                 Log.d("MrzCamera", "MRZ detected: doc=${parsed.documentNumber} dob=${parsed.dateOfBirth} exp=${parsed.expiryDate}")
                                                 mrzDetected = true
                                                 isScanning = false
-                                                scanStatus = "MRZ detected!"
+                                                scanStatus = "✓ MRZ detected!"
+                                                scanHint = "Doc: ${parsed.documentNumber}"
                                                 onMrzDetected(
                                                     parsed.documentNumber,
                                                     parsed.dateOfBirth,
@@ -403,6 +439,7 @@ private fun MrzCameraScanContent(
                                         imageProxy.close()
                                     }
                                     .addOnFailureListener {
+                                        scanStatus = "Analyzing…"
                                         imageProxy.close()
                                     }
                             }
@@ -425,6 +462,9 @@ private fun MrzCameraScanContent(
             )
 
             // MRZ scan overlay - draw dark areas around the clear scanning zone
+            val frameColor = if (scanStatus.contains("MRZ line detected") || scanStatus.contains("✓"))
+                AccentGreen else AccentCyan
+
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val overlayColor = Color.Black.copy(alpha = 0.7f)
 
@@ -436,63 +476,31 @@ private fun MrzCameraScanContent(
                 val frameBottom = frameTop + frameHeight
 
                 // Draw 4 rectangles around the clear area (top, bottom, left, right)
+                drawRect(color = overlayColor, topLeft = Offset(0f, 0f), size = Size(size.width, frameTop))
+                drawRect(color = overlayColor, topLeft = Offset(0f, frameBottom), size = Size(size.width, size.height - frameBottom))
+                drawRect(color = overlayColor, topLeft = Offset(0f, frameTop), size = Size(frameLeft, frameHeight))
+                drawRect(color = overlayColor, topLeft = Offset(frameRight, frameTop), size = Size(size.width - frameRight, frameHeight))
 
-                // Top rectangle (from top of screen to top of frame)
-                drawRect(
-                    color = overlayColor,
-                    topLeft = Offset(0f, 0f),
-                    size = Size(size.width, frameTop)
-                )
-
-                // Bottom rectangle (from bottom of frame to bottom of screen)
-                drawRect(
-                    color = overlayColor,
-                    topLeft = Offset(0f, frameBottom),
-                    size = Size(size.width, size.height - frameBottom)
-                )
-
-                // Left rectangle (between top and bottom overlays, left side)
-                drawRect(
-                    color = overlayColor,
-                    topLeft = Offset(0f, frameTop),
-                    size = Size(frameLeft, frameHeight)
-                )
-
-                // Right rectangle (between top and bottom overlays, right side)
-                drawRect(
-                    color = overlayColor,
-                    topLeft = Offset(frameRight, frameTop),
-                    size = Size(size.width - frameRight, frameHeight)
-                )
-
-                // Frame border around the clear area
+                // Frame border — turns green when MRZ candidate is visible
                 drawRoundRect(
-                    color = AccentCyan,
+                    color = frameColor,
                     topLeft = Offset(frameLeft, frameTop),
                     size = Size(frameWidth, frameHeight),
                     cornerRadius = CornerRadius(8.dp.toPx()),
                     style = Stroke(width = 3.dp.toPx())
                 )
 
-                // Corner accents for better visibility
+                // Corner accents
                 val cornerLength = 20.dp.toPx()
                 val cornerWidth = 4.dp.toPx()
-
-                // Top-left corner
-                drawLine(AccentCyan, Offset(frameLeft, frameTop), Offset(frameLeft + cornerLength, frameTop), cornerWidth)
-                drawLine(AccentCyan, Offset(frameLeft, frameTop), Offset(frameLeft, frameTop + cornerLength), cornerWidth)
-
-                // Top-right corner
-                drawLine(AccentCyan, Offset(frameRight - cornerLength, frameTop), Offset(frameRight, frameTop), cornerWidth)
-                drawLine(AccentCyan, Offset(frameRight, frameTop), Offset(frameRight, frameTop + cornerLength), cornerWidth)
-
-                // Bottom-left corner
-                drawLine(AccentCyan, Offset(frameLeft, frameBottom), Offset(frameLeft + cornerLength, frameBottom), cornerWidth)
-                drawLine(AccentCyan, Offset(frameLeft, frameBottom - cornerLength), Offset(frameLeft, frameBottom), cornerWidth)
-
-                // Bottom-right corner
-                drawLine(AccentCyan, Offset(frameRight - cornerLength, frameBottom), Offset(frameRight, frameBottom), cornerWidth)
-                drawLine(AccentCyan, Offset(frameRight, frameBottom - cornerLength), Offset(frameRight, frameBottom), cornerWidth)
+                drawLine(frameColor, Offset(frameLeft, frameTop), Offset(frameLeft + cornerLength, frameTop), cornerWidth)
+                drawLine(frameColor, Offset(frameLeft, frameTop), Offset(frameLeft, frameTop + cornerLength), cornerWidth)
+                drawLine(frameColor, Offset(frameRight - cornerLength, frameTop), Offset(frameRight, frameTop), cornerWidth)
+                drawLine(frameColor, Offset(frameRight, frameTop), Offset(frameRight, frameTop + cornerLength), cornerWidth)
+                drawLine(frameColor, Offset(frameLeft, frameBottom), Offset(frameLeft + cornerLength, frameBottom), cornerWidth)
+                drawLine(frameColor, Offset(frameLeft, frameBottom - cornerLength), Offset(frameLeft, frameBottom), cornerWidth)
+                drawLine(frameColor, Offset(frameRight - cornerLength, frameBottom), Offset(frameRight, frameBottom), cornerWidth)
+                drawLine(frameColor, Offset(frameRight, frameBottom - cornerLength), Offset(frameRight, frameBottom), cornerWidth)
             }
 
             // Instructions
@@ -527,11 +535,27 @@ private fun MrzCameraScanContent(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Main status text
             Text(
                 text = scanStatus,
-                color = Color.White,
-                fontSize = 16.sp
+                color = if (scanStatus.contains("✓")) AccentGreen
+                       else if (scanStatus.contains("MRZ line")) AccentCyan
+                       else Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Secondary hint
+            if (scanHint.isNotEmpty()) {
+                Text(
+                    text = scanHint,
+                    color = Color.Gray,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -543,6 +567,12 @@ private fun MrzCameraScanContent(
                         .clip(RoundedCornerShape(2.dp)),
                     color = AccentCyan,
                     trackColor = Color.Gray.copy(alpha = 0.3f)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Frames analyzed: $framesAnalyzed",
+                    color = Color.Gray.copy(alpha = 0.6f),
+                    fontSize = 11.sp
                 )
             }
 

@@ -90,28 +90,51 @@ fun MyQrScreen(
             isLoading = true
             errorMessage = null
             try {
-                // 1. Read the stored Verifiable Credential
+                // 1. Read the stored Verifiable Credential (may be null if issuer API was unreachable)
                 Log.d(TAG, "Reading stored credential …")
                 val credentialJson = walletDataStore.credential.first()
-                if (credentialJson.isNullOrBlank()) {
-                    errorMessage = "No credential found. Scan your passport first."
-                    isLoading = false
-                    return@launch
-                }
 
-                Log.d(TAG, "Credential loaded (${credentialJson.length} chars)")
+                // 2. Extract ZK‑friendly integers — from VC if available, else from local passport fields
+                val dob: Int
+                val passportNumber: Int
+                val nationality: Int
+                val fullName: String
 
-                // 2. Extract ZK‑friendly integers from the VC
-                val vc = Gson().fromJson(credentialJson, JsonObject::class.java)
-                val subject = vc.getAsJsonObject("credentialSubject")
+                if (!credentialJson.isNullOrBlank()) {
+                    Log.d(TAG, "Credential loaded (${credentialJson.length} chars)")
+                    val vc = Gson().fromJson(credentialJson, JsonObject::class.java)
+                    val subject = vc.getAsJsonObject("credentialSubject")
+                    dob = subject.get("dateOfBirth").asInt
+                    passportNumber = subject.get("passportNumber").asInt
+                    nationality = subject.get("nationality").asInt
+                    fullName = walletDataStore.passportFullName.first().ifBlank {
+                        subject.get("name")?.asString ?: "Unknown"
+                    }
+                } else {
+                    // Fallback: build ZK inputs from locally stored passport data
+                    Log.d(TAG, "No VC JSON — using local passport fields")
+                    val rawDob = walletDataStore.passportDateOfBirth.first() // "DD/MM/YYYY"
+                    val rawDocNum = walletDataStore.passportDocNumber.first()
+                    val rawNat = walletDataStore.passportNationality.first()
+                    fullName = walletDataStore.passportFullName.first()
 
-                val dob = subject.get("dateOfBirth").asInt
-                val passportNumber = subject.get("passportNumber").asInt
-                val nationality = subject.get("nationality").asInt
+                    if (rawDob.isBlank() || rawDocNum.isBlank()) {
+                        errorMessage = "No credential found. Scan your passport first."
+                        isLoading = false
+                        return@launch
+                    }
 
-                // Resolve the user's full name for optional disclosure
-                val fullName = walletDataStore.passportFullName.first().ifBlank {
-                    subject.get("holderDid")?.asString ?: "Unknown"
+                    // Convert DD/MM/YYYY → YYYYMMDD int
+                    dob = try {
+                        val parts = rawDob.split("/")
+                        "${parts[2]}${parts[1]}${parts[0]}".toInt()
+                    } catch (_: Exception) { 0 }
+
+                    // Deterministic string → positive Int (mirrors PassportViewModel logic)
+                    passportNumber = rawDocNum.toIntOrNull()
+                        ?: (kotlin.math.abs(rawDocNum.hashCode()) % 1_000_000_000)
+                    nationality = rawNat.toIntOrNull()
+                        ?: (kotlin.math.abs(rawNat.hashCode()) % 1_000_000_000)
                 }
                 val userNationality = walletDataStore.passportNationality.first()
                 val userGender = walletDataStore.passportGender.first()

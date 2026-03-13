@@ -65,8 +65,14 @@ fun AppNav() {
 
     // ==================== AUTO-LOCK ON BACKGROUND ====================
     // Screens that don't require re-authentication
+    // scan_passport + face_verification are exempt so NFC scanning
+    // isn't interrupted by auto-lock when the user lifts the phone.
     val unauthenticatedRoutes = remember {
-        setOf("splash", "welcome", "set_pin", "enrollment", "wallet_created", "unlock_wallet")
+        setOf(
+            "splash", "welcome", "set_pin", "enrollment",
+            "wallet_created", "unlock_wallet",
+            "scan_passport", "face_verification"
+        )
     }
     var isSessionLocked by remember { mutableStateOf(false) }
 

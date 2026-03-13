@@ -66,7 +66,7 @@ class PassportNfcReader {
 
             Log.d(TAG, "IsoDep obtained, connecting...")
 
-            isoDep.timeout = 10000 // 10 seconds timeout
+            isoDep.timeout = 30000 // 30 seconds — DG2 photo reads can take 15+ seconds
             isoDep.connect()
             Log.d(TAG, "IsoDep connected successfully")
 

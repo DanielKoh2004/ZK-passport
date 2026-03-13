@@ -334,6 +334,11 @@ private fun MrzCameraScanContent(
             mrzScanner.close()
             textRecognizer.close()
             analysisExecutor.shutdown()
+            // Release camera when leaving this composable to avoid battery
+            // drain and camera lock while on the Confirm / NFC steps.
+            try {
+                ProcessCameraProvider.getInstance(context).get().unbindAll()
+            } catch (_: Exception) { /* best-effort */ }
         }
     }
 
@@ -959,19 +964,21 @@ private fun NfcScanContent(
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        // Developer bypass button (REMOVE BEFORE PRODUCTION)
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onDevBypass,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
-        ) {
-            Text(
-                "DEV: Bypass NFC & Get Credential",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
+        // Developer bypass button (only in debug builds)
+        if (com.example.zk.BuildConfig.DEBUG) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = onDevBypass,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+            ) {
+                Text(
+                    "DEV: Bypass NFC & Get Credential",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

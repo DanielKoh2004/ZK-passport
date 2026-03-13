@@ -2,8 +2,10 @@ package com.example.zk
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.IntentFilter
 import android.nfc.NfcAdapter
 import android.nfc.Tag
+import android.nfc.tech.IsoDep
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -30,6 +32,8 @@ class MainActivity : AppCompatActivity() {
 
     private var nfcAdapter: NfcAdapter? = null
     private var pendingIntent: PendingIntent? = null
+    private lateinit var nfcIntentFilters: Array<IntentFilter>
+    private lateinit var nfcTechLists: Array<Array<String>>
 
     // Use activity-scoped ViewModel
     private val passportViewModel: PassportViewModel by viewModels()
@@ -59,6 +63,19 @@ class MainActivity : AppCompatActivity() {
             PendingIntent.FLAG_MUTABLE
         )
 
+        // Explicit IntentFilter + tech list so foreground dispatch catches
+        // IsoDep (passport) tags reliably on all OEMs (Honor, Huawei, etc.)
+        nfcIntentFilters = arrayOf(
+            IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED),
+            IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED)
+        )
+        nfcTechLists = arrayOf(
+            arrayOf(IsoDep::class.java.name)
+        )
+
+        // Handle NFC intent that may have launched / re-launched the activity
+        handleNfcIntent(intent)
+
         setContent {
             ZKTheme {
                 // Provide the PassportViewModel to the entire composition
@@ -71,9 +88,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Enable NFC foreground dispatch
+        // Enable NFC foreground dispatch with explicit tech filters
         Log.d(TAG, "Enabling NFC foreground dispatch")
-        nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
+        nfcAdapter?.enableForegroundDispatch(
+            this, pendingIntent, nfcIntentFilters, nfcTechLists
+        )
     }
 
     override fun onPause() {
@@ -85,14 +104,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent) // update the stored intent
         Log.d(TAG, "onNewIntent received: action=${intent.action}")
+        handleNfcIntent(intent)
+    }
 
-        // Handle NFC tag
+    /**
+     * Extract NFC tag from any intent and forward to the ViewModel.
+     * Called from both onCreate (cold-start / relaunch) and onNewIntent.
+     */
+    private fun handleNfcIntent(intent: Intent?) {
+        if (intent == null) return
+
         if (NfcAdapter.ACTION_TECH_DISCOVERED == intent.action ||
             NfcAdapter.ACTION_TAG_DISCOVERED == intent.action ||
             NfcAdapter.ACTION_NDEF_DISCOVERED == intent.action) {
 
-            Log.d(TAG, "NFC action detected!")
+            Log.d(TAG, "NFC action detected! (${intent.action})")
 
             val tag = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag::class.java)
@@ -106,10 +134,8 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Passport detected!", Toast.LENGTH_SHORT).show()
                 passportViewModel.handleNfcTag(tag)
             } else {
-                Log.e(TAG, "NFC Tag is null")
+                Log.e(TAG, "NFC Tag is null in intent")
             }
-        } else {
-            Log.d(TAG, "Intent action not NFC related: ${intent.action}")
         }
     }
 }

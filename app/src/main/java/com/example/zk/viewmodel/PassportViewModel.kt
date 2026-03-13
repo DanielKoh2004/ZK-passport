@@ -198,12 +198,15 @@ class PassportViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * Go back to camera MRZ scan
+     * Go back to camera MRZ scan.
+     * Cancels any in-progress NFC read and resets the reader state.
      */
     fun backToMrzScan() {
+        passportReader.reset() // resets readingState to Idle, closes connections
         _uiState.value = _uiState.value.copy(
             step = PassportScanStep.SCAN_MRZ,
-            errorMessage = null
+            errorMessage = null,
+            isLoading = false
         )
     }
 
@@ -214,6 +217,12 @@ class PassportViewModel(application: Application) : AndroidViewModel(application
     fun handleNfcTag(tag: Tag) {
         Log.d(TAG, "NFC Tag received! Tag: $tag")
         Log.d(TAG, "Current UI step: ${_uiState.value.step}")
+
+        // Ignore NFC tags if we're not actively waiting for one
+        if (_uiState.value.step != PassportScanStep.SCAN_NFC) {
+            Log.w(TAG, "Ignoring NFC tag — not in SCAN_NFC step (current: ${_uiState.value.step})")
+            return
+        }
 
         val mrz = _mrzData.value
         if (mrz == null) {

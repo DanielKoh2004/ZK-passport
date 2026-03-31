@@ -104,8 +104,14 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
+    // ML Kit Barcode Scanning (for scanning challenge QR codes)
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+
     // ZXing for QR code generation
     implementation("com.google.zxing:core:3.5.2")
+
+    // Biometric authentication
+    implementation("androidx.biometric:biometric:1.1.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

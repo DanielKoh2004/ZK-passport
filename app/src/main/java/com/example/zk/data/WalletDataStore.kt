@@ -35,6 +35,7 @@ class WalletDataStore(private val context: Context) {
         private val CREDENTIAL_STORED = booleanPreferencesKey("credential_stored")
         private val CREDENTIAL_DATA = stringPreferencesKey("credential_data")
         private val USER_NAME = stringPreferencesKey("user_name")
+        private val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
 
         // Passport data keys (derived from NFC scan - raw data NOT stored)
         private val PASSPORT_FULL_NAME = stringPreferencesKey("passport_full_name")
@@ -79,6 +80,11 @@ class WalletDataStore(private val context: Context) {
     // Check if credential is stored
     val hasCredential: Flow<Boolean> = context.walletDataStore.data.map { prefs ->
         prefs[CREDENTIAL_STORED] ?: false
+    }
+
+    // Check if onboarding is completed
+    val isOnboardingComplete: Flow<Boolean> = context.walletDataStore.data.map { prefs ->
+        prefs[ONBOARDING_COMPLETED] ?: false
     }
 
     // Get user name
@@ -136,6 +142,15 @@ class WalletDataStore(private val context: Context) {
     suspend fun setLanguage(languageCode: String) {
         context.walletDataStore.edit { prefs ->
             prefs[LANGUAGE_CODE] = languageCode
+        }
+    }
+
+    /**
+     * Set onboarding complete status
+     */
+    suspend fun setOnboardingComplete(complete: Boolean) {
+        context.walletDataStore.edit { prefs ->
+            prefs[ONBOARDING_COMPLETED] = complete
         }
     }
 

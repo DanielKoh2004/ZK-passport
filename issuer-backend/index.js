@@ -26,6 +26,34 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 // ---------------------------------------------------------------------------
+// Simple in-memory rate limiter (max 30 req/min per IP)
+// ---------------------------------------------------------------------------
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 30;
+
+function rateLimit(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { windowStart: now, count: 1 });
+    return next();
+  }
+
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    console.warn(`Rate limit exceeded for ${ip}`);
+    return res.status(429).json({ error: "Too many requests. Try again later." });
+  }
+  return next();
+}
+
+// Apply rate limiting to session endpoints
+app.use("/api/session", rateLimit);
+
+// ---------------------------------------------------------------------------
 // GET /api/public-key
 // Returns the Government's public key in hex format.
 // ---------------------------------------------------------------------------
@@ -105,6 +133,65 @@ app.post("/api/issue-passport", (req, res) => {
     res.status(201).json({ verifiableCredential });
   } catch (err) {
     console.error("Error issuing passport:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 3. In-memory verification session tracker
+// ---------------------------------------------------------------------------
+const verificationSessions = new Map();
+
+/**
+ * POST /api/session/:nonce/status
+ * Called by the Verifier app after successful offline verification.
+ * Body: { "status": "success" }
+ * Auto-expires after 60 seconds to prevent memory leaks.
+ */
+app.post("/api/session/:nonce/status", (req, res) => {
+  try {
+    const { nonce } = req.params;
+    const { status } = req.body;
+
+    if (!nonce || !status) {
+      return res.status(400).json({ error: "Missing nonce or status" });
+    }
+
+    console.log(`Session ${nonce.substring(0, 8)}… → status: ${status}`);
+    verificationSessions.set(nonce, { status, updatedAt: Date.now() });
+
+    // Auto-delete after 60 seconds
+    setTimeout(() => {
+      if (verificationSessions.has(nonce)) {
+        verificationSessions.delete(nonce);
+        console.log(`Session ${nonce.substring(0, 8)}… expired and removed`);
+      }
+    }, 60_000);
+
+    res.json({ nonce, status });
+  } catch (err) {
+    console.error("Error updating session status:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/**
+ * GET /api/session/:nonce/status
+ * Polled by the Citizen app to check if the Officer has verified successfully.
+ * Returns { "status": "pending" } if the nonce is not yet known.
+ */
+app.get("/api/session/:nonce/status", (req, res) => {
+  try {
+    const { nonce } = req.params;
+    const session = verificationSessions.get(nonce);
+
+    if (session) {
+      res.json({ status: session.status });
+    } else {
+      res.json({ status: "pending" });
+    }
+  } catch (err) {
+    console.error("Error reading session status:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

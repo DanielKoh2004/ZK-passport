@@ -7,6 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Path
 import java.util.concurrent.TimeUnit
 
 // ── Request / Response DTOs ─────────────────────────────────────────────────
@@ -56,6 +57,11 @@ data class VcProof(
     val proofValue: String
 )
 
+/** Response from the session status polling endpoint. */
+data class SessionStatusResponse(
+    val status: String
+)
+
 // ── Retrofit Interface ──────────────────────────────────────────────────────
 
 interface IssuerApi {
@@ -65,6 +71,10 @@ interface IssuerApi {
 
     @POST("api/issue-passport")
     suspend fun issuePassport(@Body request: IssuePassportRequest): IssuePassportResponse
+
+    /** Poll the signaling server for verification status. */
+    @GET("api/session/{nonce}/status")
+    suspend fun getSessionStatus(@Path("nonce") nonce: String): SessionStatusResponse
 }
 
 // ── Singleton Retrofit Instance ─────────────────────────────────────────────
@@ -75,7 +85,7 @@ object IssuerApiClient {
      * 10.0.2.2 is the Android emulator's alias for the host machine's localhost.
      * Change to your machine's LAN IP if testing on a physical device.
      */
-    private const val BASE_URL = "http://10.0.2.2:3000/"
+    private const val BASE_URL = "http://192.168.100.36:3000/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

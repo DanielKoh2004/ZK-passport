@@ -92,4 +92,24 @@ object CryptoManager {
         signature.update(data)
         return signature.verify(signatureBytes)
     }
+
+    // ── Handshake helpers ────────────────────────────────────────────────
+
+    /**
+     * Sign a string payload with the device private key (SHA256withECDSA).
+     * Returns the signature as a standard Base64-encoded string.
+     */
+    fun signPayload(payload: String): String {
+        val signatureBytes = sign(payload.toByteArray(Charsets.UTF_8))
+        return Base64.encodeToString(signatureBytes, Base64.NO_WRAP)
+    }
+
+    /**
+     * Return the device's public key as a standard Base64-encoded string.
+     * Uses X.509 / DER encoding suitable for cross-platform verification.
+     */
+    fun getPublicKeyBase64(): String {
+        val pubKeyBytes = getPublicKeyBytes()
+        return Base64.encodeToString(pubKeyBytes, Base64.NO_WRAP)
+    }
 }

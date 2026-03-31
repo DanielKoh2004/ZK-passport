@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- Vibration Permission for Haptic Feedback -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:name=".ZKApplication"
         android:allowBackup="true"

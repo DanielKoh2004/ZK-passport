@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import kotlinx.coroutines.launch
 import com.example.zk.LocalPassportViewModel
 import com.example.zk.data.WalletDataStore
 import com.example.zk.ui.screens.*
@@ -71,7 +72,8 @@ fun AppNav() {
         setOf(
             "splash", "welcome", "set_pin", "enrollment",
             "wallet_created", "unlock_wallet",
-            "scan_passport", "face_verification"
+            "scan_passport", "face_verification",
+            "scan_challenge"
         )
     }
     var isSessionLocked by remember { mutableStateOf(false) }
@@ -196,9 +198,11 @@ fun AppNav() {
         // Step 3: Wallet Created Success
         composable("wallet_created") {
             val userName by walletDataStore.userName.collectAsState(initial = "User")
+            val isOnboardingComplete by walletDataStore.isOnboardingComplete.collectAsState(initial = false)
             WalletCreatedScreen(
                 onContinue = {
-                    navController.navigate("home") {
+                    val destination = if (isOnboardingComplete) "home" else "onboarding"
+                    navController.navigate(destination) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -243,10 +247,12 @@ fun AppNav() {
                 }
             }
 
-            // Navigate to home when unlocked
+            // Navigate to home or onboarding when unlocked
+            val isOnboardingComplete by walletDataStore.isOnboardingComplete.collectAsState(initial = false)
             LaunchedEffect(uiState.isUnlocked) {
                 if (uiState.isUnlocked) {
-                    navController.navigate("home") {
+                    val destination = if (isOnboardingComplete) "home" else "onboarding"
+                    navController.navigate(destination) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
@@ -283,6 +289,21 @@ fun AppNav() {
         }
 
         // ==================== MAIN SCREENS ====================
+
+        // Onboarding Screen (first-run walkthrough)
+        composable("onboarding") {
+            val coroutineScope = rememberCoroutineScope()
+            OnboardingScreen(
+                onFinish = {
+                    coroutineScope.launch {
+                        walletDataStore.setOnboardingComplete(true)
+                        navController.navigate("home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
+            )
+        }
 
         // Home Screen
         composable("home") {
@@ -325,6 +346,7 @@ fun AppNav() {
             val homeState by homeViewModel.homeState.collectAsState()
 
             GenerateProofScreen(
+                onBackClick = { navController.popBackStack() },
                 onNavigateToHome = {
                     navController.navigate("home") {
                         popUpTo("home") { inclusive = true }
@@ -346,7 +368,7 @@ fun AppNav() {
                     }
                 },
                 onGenerateProof = { proofType, disclosureMask ->
-                    navController.navigate("my_qr/$proofType/$disclosureMask") {
+                    navController.navigate("scan_challenge/$proofType/$disclosureMask") {
                         launchSingleTop = true
                     }
                 },
@@ -622,10 +644,10 @@ fun AppNav() {
             )
         }
 
-        // ==================== ZK PROOF / QR ====================
+        // ==================== CHALLENGE SCANNER ====================
 
         composable(
-            route = "my_qr/{proofType}/{disclosureMask}",
+            route = "scan_challenge/{proofType}/{disclosureMask}",
             arguments = listOf(
                 navArgument("proofType") { type = NavType.IntType; defaultValue = 0 },
                 navArgument("disclosureMask") { type = NavType.IntType; defaultValue = 0 }
@@ -633,10 +655,39 @@ fun AppNav() {
         ) { backStackEntry ->
             val proofType = backStackEntry.arguments?.getInt("proofType") ?: 0
             val disclosureMask = backStackEntry.arguments?.getInt("disclosureMask") ?: 0
+            ChallengeScannerScreen(
+                onChallengeScanned = { nonce ->
+                    navController.navigate("my_qr/$proofType/$disclosureMask/$nonce") {
+                        // Remove scan_challenge from backstack so back goes to generate_proof
+                        popUpTo("scan_challenge/$proofType/$disclosureMask") { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // ==================== ZK PROOF / QR ====================
+
+        composable(
+            route = "my_qr/{proofType}/{disclosureMask}/{nonce}",
+            arguments = listOf(
+                navArgument("proofType") { type = NavType.IntType; defaultValue = 0 },
+                navArgument("disclosureMask") { type = NavType.IntType; defaultValue = 0 },
+                navArgument("nonce") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { backStackEntry ->
+            val proofType = backStackEntry.arguments?.getInt("proofType") ?: 0
+            val disclosureMask = backStackEntry.arguments?.getInt("disclosureMask") ?: 0
+            val nonce = backStackEntry.arguments?.getString("nonce") ?: ""
             MyQrScreen(
                 proofType = proofType,
                 disclosureMask = disclosureMask,
-                onBack = { navController.popBackStack() }
+                nonce = nonce,
+                onBack = {
+                    navController.navigate("home") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
     } // end NavHost

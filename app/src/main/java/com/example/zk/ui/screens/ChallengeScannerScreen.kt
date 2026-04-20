@@ -60,13 +60,13 @@ private val ErrorRed = Color(0xFFFF5252)
 
 /**
  * Camera screen that scans the Officer's challenge QR code.
- * Expects JSON: {"type":"auth_challenge","request":"age_over_18","nonce":"<NONCE>"}
- * On success, calls onChallengeScanned with the extracted nonce.
+ * Expects JSON: {"type":"auth_challenge","request":"...","requestedDisclosures":[...],"nonce":"<NONCE>"}
+ * On success, calls onChallengeScanned with the extracted nonce, proof type, and requested disclosures.
  */
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ChallengeScannerScreen(
-    onChallengeScanned: (nonce: String) -> Unit = {},
+    onChallengeScanned: (nonce: String, proofType: Int, requestedDisclosures: List<String>) -> Unit = { _, _, _ -> },
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -135,6 +135,34 @@ fun ChallengeScannerScreen(
                                     return@ChallengeCameraPreview
                                 }
 
+                                // Parse request type → proof type int
+                                val requestKey = json.optString("request", "age_over_18")
+                                val proofType = when (requestKey) {
+                                    "nationality" -> 1
+                                    "credential_valid" -> 2
+                                    else -> 0 // age_over_18
+                                }
+
+                                // Parse requested disclosures
+                                val disclosuresArray = json.optJSONArray("requestedDisclosures")
+                                val validKeys = setOf("name", "nationality", "gender")
+                                val rawDisclosures = mutableListOf<String>()
+                                if (disclosuresArray != null) {
+                                    for (i in 0 until disclosuresArray.length()) {
+                                        val key = disclosuresArray.optString(i, "")
+                                        if (key in validKeys) rawDisclosures.add(key)
+                                    }
+                                }
+
+                                // Scope validation: credential_valid should not request identity fields
+                                val requestedDisclosures = if (requestKey == "credential_valid") {
+                                    rawDisclosures.filter { it == "nationality" }
+                                } else {
+                                    rawDisclosures
+                                }
+
+                                Log.d(TAG, "Parsed challenge: request=$requestKey, proofType=$proofType, disclosures=$requestedDisclosures")
+
                                 // Validate timestamp (reject challenges older than 60s)
                                 val timestamp = json.optLong("timestamp", 0L)
                                 if (timestamp > 0) {
@@ -165,8 +193,8 @@ fun ChallengeScannerScreen(
                                     toneGen.startTone(ToneGenerator.TONE_PROP_ACK, 150)
                                 } catch (_: Exception) {}
 
-                                Log.d(TAG, "Challenge scanned successfully — nonce=$nonce")
-                                onChallengeScanned(nonce)
+                                Log.d(TAG, "Challenge scanned successfully — nonce=$nonce, proofType=$proofType")
+                                onChallengeScanned(nonce, proofType, requestedDisclosures)
                             } catch (e: Exception) {
                                 errorMessage = "Not a valid challenge QR code"
                                 Log.w(TAG, "Failed to parse QR: ${e.message}")

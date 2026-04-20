@@ -73,7 +73,7 @@ fun AppNav() {
             "splash", "welcome", "set_pin", "enrollment",
             "wallet_created", "unlock_wallet",
             "scan_passport", "face_verification",
-            "scan_challenge"
+            "scan_challenge", "disclosure_review"
         )
     }
     var isSessionLocked by remember { mutableStateOf(false) }
@@ -340,7 +340,7 @@ fun AppNav() {
             )
         }
 
-        // Generate Proof Screen
+        // Generate Proof Screen (simplified — proof type comes from verifier challenge)
         composable("generate_proof") {
             val homeViewModel: HomeViewModel = viewModel()
             val homeState by homeViewModel.homeState.collectAsState()
@@ -367,8 +367,8 @@ fun AppNav() {
                         launchSingleTop = true
                     }
                 },
-                onGenerateProof = { proofType, disclosureMask ->
-                    navController.navigate("scan_challenge/$proofType/$disclosureMask") {
+                onScanAndProve = {
+                    navController.navigate("scan_challenge") {
                         launchSingleTop = true
                     }
                 },
@@ -646,20 +646,58 @@ fun AppNav() {
 
         // ==================== CHALLENGE SCANNER ====================
 
+        composable("scan_challenge") {
+            ChallengeScannerScreen(
+                onChallengeScanned = { nonce, proofType, requestedDisclosures ->
+                    // Encode requested disclosures as comma-separated string for nav param
+                    val disclosuresParam = if (requestedDisclosures.isNotEmpty()) {
+                        requestedDisclosures.joinToString(",")
+                    } else {
+                        "none"
+                    }
+                    navController.navigate("disclosure_review/$proofType/$disclosuresParam/$nonce") {
+                        // Remove scan_challenge from backstack so back goes to generate_proof
+                        popUpTo("scan_challenge") { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // ==================== DISCLOSURE REVIEW ====================
+
         composable(
-            route = "scan_challenge/{proofType}/{disclosureMask}",
+            route = "disclosure_review/{proofType}/{requestedDisclosures}/{nonce}",
             arguments = listOf(
                 navArgument("proofType") { type = NavType.IntType; defaultValue = 0 },
-                navArgument("disclosureMask") { type = NavType.IntType; defaultValue = 0 }
+                navArgument("requestedDisclosures") { type = NavType.StringType; defaultValue = "none" },
+                navArgument("nonce") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val proofType = backStackEntry.arguments?.getInt("proofType") ?: 0
-            val disclosureMask = backStackEntry.arguments?.getInt("disclosureMask") ?: 0
-            ChallengeScannerScreen(
-                onChallengeScanned = { nonce ->
-                    navController.navigate("my_qr/$proofType/$disclosureMask/$nonce") {
-                        // Remove scan_challenge from backstack so back goes to generate_proof
-                        popUpTo("scan_challenge/$proofType/$disclosureMask") { inclusive = true }
+            val disclosuresParam = backStackEntry.arguments?.getString("requestedDisclosures") ?: "none"
+            val nonce = backStackEntry.arguments?.getString("nonce") ?: ""
+
+            // Decode comma-separated disclosures back to list
+            val requestedDisclosures = if (disclosuresParam == "none") {
+                emptyList()
+            } else {
+                disclosuresParam.split(",").filter { it.isNotBlank() }
+            }
+
+            DisclosureReviewScreen(
+                proofType = proofType,
+                requestedDisclosures = requestedDisclosures,
+                nonce = nonce,
+                onConfirm = { confirmedProofType, disclosureMask, confirmedNonce ->
+                    // Encode requested disclosures for passing to my_qr
+                    val reqDiscParam = if (requestedDisclosures.isNotEmpty()) {
+                        requestedDisclosures.joinToString(",")
+                    } else {
+                        "none"
+                    }
+                    navController.navigate("my_qr/$confirmedProofType/$disclosureMask/$confirmedNonce/$reqDiscParam") {
+                        popUpTo("disclosure_review/$proofType/$disclosuresParam/$nonce") { inclusive = true }
                     }
                 },
                 onBack = { navController.popBackStack() }
@@ -669,20 +707,29 @@ fun AppNav() {
         // ==================== ZK PROOF / QR ====================
 
         composable(
-            route = "my_qr/{proofType}/{disclosureMask}/{nonce}",
+            route = "my_qr/{proofType}/{disclosureMask}/{nonce}/{reqDisc}",
             arguments = listOf(
                 navArgument("proofType") { type = NavType.IntType; defaultValue = 0 },
                 navArgument("disclosureMask") { type = NavType.IntType; defaultValue = 0 },
-                navArgument("nonce") { type = NavType.StringType; defaultValue = "" }
+                navArgument("nonce") { type = NavType.StringType; defaultValue = "" },
+                navArgument("reqDisc") { type = NavType.StringType; defaultValue = "none" }
             )
         ) { backStackEntry ->
             val proofType = backStackEntry.arguments?.getInt("proofType") ?: 0
             val disclosureMask = backStackEntry.arguments?.getInt("disclosureMask") ?: 0
             val nonce = backStackEntry.arguments?.getString("nonce") ?: ""
+            val reqDiscParam = backStackEntry.arguments?.getString("reqDisc") ?: "none"
+            val requestedDisclosures = if (reqDiscParam == "none") {
+                emptyList()
+            } else {
+                reqDiscParam.split(",").filter { it.isNotBlank() }
+            }
+
             MyQrScreen(
                 proofType = proofType,
                 disclosureMask = disclosureMask,
                 nonce = nonce,
+                requestedDisclosures = requestedDisclosures,
                 onBack = {
                     navController.navigate("home") {
                         popUpTo(0) { inclusive = true }

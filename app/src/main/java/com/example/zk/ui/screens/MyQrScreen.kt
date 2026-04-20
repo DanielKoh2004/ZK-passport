@@ -64,6 +64,9 @@ const val PROOF_TYPE_AGE_18 = 0
 const val PROOF_TYPE_NATIONALITY = 1
 const val PROOF_TYPE_CREDENTIAL_VALID = 2
 
+// Total optional disclosure fields (name, nationality, gender)
+private const val TOTAL_DISCLOSURE_FIELDS = 3
+
 private fun proofTypeKey(type: Int): String = when (type) {
     PROOF_TYPE_NATIONALITY -> "nationality"
     PROOF_TYPE_CREDENTIAL_VALID -> "credential_valid"
@@ -88,6 +91,7 @@ fun MyQrScreen(
     proofType: Int = PROOF_TYPE_AGE_18,
     disclosureMask: Int = 0,
     nonce: String = "",
+    requestedDisclosures: List<String> = emptyList(),
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -316,6 +320,7 @@ fun MyQrScreen(
                     addProperty("type", proofTypeKey(proofType))
 
                     // Selectively disclose data based on user configuration bitmask
+                    // bit 1 (0x2) = name, bit 2 (0x4) = nationality, bit 3 (0x8) = gender
                     if ((disclosureMask and 2) != 0) {
                         addProperty("name", walletDataStore.passportFullName.first())
                     }
@@ -338,15 +343,17 @@ fun MyQrScreen(
                 qrBitmap = bitmap
                 Log.d(TAG, "QR bitmap generated: ${bitmap.width}x${bitmap.height}")
 
-                // 8. Save to proof history
+                // 8. Save to proof history (Enhancement #7: include request vs actual disclosure)
                 walletDataStore.addProofHistoryEntry(
                     WalletDataStore.ProofHistoryEntry(
                         proofType = proofTypeKey(proofType),
                         label = proofTypeLabel(proofType),
                         timestamp = System.currentTimeMillis(),
-                        disclosedName = false,
+                        disclosedName = (disclosureMask and 2) != 0,
                         success = true,
-                        proofSizeBytes = qrPayload.length
+                        proofSizeBytes = qrPayload.length,
+                        requestedDisclosures = requestedDisclosures,
+                        actualDisclosureMask = disclosureMask
                     )
                 )
 
@@ -547,6 +554,35 @@ fun MyQrScreen(
                             color = Color.Gray,
                             fontSize = 12.sp
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Minimal disclosure badge (Enhancement #8)
+                    val sharedFieldCount = listOf(
+                        (disclosureMask and 2) != 0,
+                        (disclosureMask and 4) != 0,
+                        (disclosureMask and 8) != 0
+                    ).count { it }
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (sharedFieldCount == 0) Color(0xFF4CAF50).copy(alpha = 0.15f)
+                                else Color(0xFFFF9800).copy(alpha = 0.15f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("\uD83D\uDEE1\uFE0F", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                if (sharedFieldCount == 0) "Maximum privacy: no personal data shared"
+                                else "Minimal disclosure: $sharedFieldCount of $TOTAL_DISCLOSURE_FIELDS fields shared",
+                                color = if (sharedFieldCount == 0) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))

@@ -311,7 +311,11 @@ class WalletDataStore(private val context: Context) {
         val timestamp: Long,         // System.currentTimeMillis()
         val disclosedName: Boolean,
         val success: Boolean,
-        val proofSizeBytes: Int
+        val proofSizeBytes: Int,
+        // What the officer requested (e.g. ["name", "nationality"])
+        val requestedDisclosures: List<String> = emptyList(),
+        // Bitmask of what the citizen actually shared (bit 1=name, bit 2=nationality, bit 3=gender)
+        val actualDisclosureMask: Int = 0
     )
 
     /** Flow of all proof history entries (newest first). */

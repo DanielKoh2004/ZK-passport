@@ -1,273 +1,225 @@
 <div align="center">
 
-<a href="https://github.com/DanielKoh2004/ZK-passport">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:070B14,45:102A43,100:00D9FF&height=260&section=header&text=ZK%20PASSPORT&fontSize=64&fontColor=FFFFFF&animation=fadeIn&fontAlignY=40&desc=Prove%20what%20matters.%20Reveal%20what%27s%20necessary.&descAlignY=64&descSize=18" width="100%"/>
-</a>
+# ◈ ZK PASSPORT ◈
 
-<br>
+### **PRIVATE IDENTITY • PUBLIC PROOF**
 
-### 🔐 **Privacy-Preserving Digital Identity**
+<p>
+  <img src="https://img.shields.io/badge/ANDROID-35-101820?style=for-the-badge&logo=android&logoColor=3DDC84">
+  <img src="https://img.shields.io/badge/KOTLIN-2.x-101820?style=for-the-badge&logo=kotlin&logoColor=7F52FF">
+  <img src="https://img.shields.io/badge/COMPOSE-MATERIAL%203-101820?style=for-the-badge&logo=jetpackcompose&logoColor=4285F4">
+  <img src="https://img.shields.io/badge/ZK-zkSNARK-101820?style=for-the-badge&logo=ethereum&logoColor=00D9FF">
+</p>
 
-**An Android self-sovereign identity wallet for passport credentials and zero-knowledge proofs.**
+```text
+┌───────────────────────────────────────────────────────────────────┐
+│                                                                   │
+│    PHYSICAL IDENTITY          CRYPTOGRAPHIC CLAIM                │
+│                                                                   │
+│          🪪                       🔐                              │
+│          │                        │                              │
+│          └──────────────┬─────────┘                              │
+│                         ▼                                        │
+│                  ZERO-KNOWLEDGE                                  │
+│                         │                                        │
+│                         ▼                                        │
+│              ┌─────────────────────┐                             │
+│              │  PROVE • DON'T      │                             │
+│              │      EXPOSE         │                             │
+│              └─────────────────────┘                             │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
 
-<br>
+**An experimental self-sovereign identity wallet that turns passport data into verifiable digital credentials and zero-knowledge proofs.**
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.x-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
-[![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=android&logoColor=white)](https://developer.android.com/compose)
-[![Android](https://img.shields.io/badge/Android-SDK%2035-3DDC84?logo=android&logoColor=white)](https://developer.android.com/)
-[![ZK](https://img.shields.io/badge/Cryptography-zkSNARK-00D9FF)](#)
-[![NFC](https://img.shields.io/badge/Passport-NFC%20%2B%20MRZ-111827)](#)
-[![SSI](https://img.shields.io/badge/Identity-SSI-8B5CF6)](#)
-
-<br><br>
-
-> **Your passport contains a lot of information. A verifier usually needs very little of it.**
->
-> ZK Passport explores how to turn a physical passport into a local digital credential and prove selected claims without unnecessarily exposing the underlying identity data.
-
-<br>
+> ### The passport contains the data.
+> ### The proof contains the answer.
 
 </div>
 
 ---
 
-## 🪪 What Is ZK Passport?
+## ▌01 — THE PROBLEM
 
-A passport is one of the most information-dense identity documents a person carries.
+A passport can answer dozens of questions.
 
-But identity verification rarely needs everything inside it.
-
-A service may only need to know:
+Most verifiers only need **one**.
 
 ```text
-Are you over 18?
-Are you a Malaysian citizen?
-Is this credential valid?
+                         PASSPORT
+                ┌──────────────────────┐
+                │ Name                 │
+                │ Date of Birth        │
+                │ Passport Number      │
+                │ Nationality          │
+                │ Gender               │
+                │ Expiry Date          │
+                │ Issuing Country      │
+                └──────────┬───────────┘
+                           │
+                    "Are you 18+?"
+                           │
+              ┌────────────┴────────────┐
+              ▼                         ▼
+       TRADITIONAL                 ZK PASSPORT
+       ───────────                 ──────────
+       Show passport               Prove predicate
+              │                         │
+              ▼                         ▼
+       Reveal everything          Reveal only result
 ```
 
-Instead of:
+The project explores a different primitive for digital identity:
 
-```text
-Full Name
-Passport Number
-Date of Birth
-Nationality
-Expiry Date
-Gender
-```
-
-ZK Passport is built around the idea that the wallet should let a person **prove a claim without unnecessarily revealing the source data**.
-
-```text
-Physical Passport
-        ↓
-    MRZ + NFC
-        ↓
- Local Credential
-        ↓
- Selective Disclosure
-        ↓
-  Zero-Knowledge Proof
-        ↓
-      QR Code
-        ↓
-     Verifier
-        ↓
-   ✅ Claim Verified
-```
-
-### **Prove the fact. Keep the rest private.**
+> **Verification should depend on what is proven, not everything that is known.**
 
 ---
 
-# 🌐 Why Zero-Knowledge Identity?
+# ▌02 — PROTOCOL AT A GLANCE
 
-Traditional digital identity often looks like this:
+```mermaid
+flowchart LR
+    A[🪪 Passport] --> B[📷 MRZ / 📡 NFC]
+    B --> C[Local Processing]
+    C --> D[Credential]
+    D --> E[🔐 ZK Circuit]
+    E --> F[Proof + QR]
+    F --> G[✅ Verifier]
 
-```text
-IDENTITY
-   ↓
-UPLOAD DOCUMENT
-   ↓
-REVEAL EVERYTHING
-   ↓
-VERIFY
+    H[🏛️ Issuer] --> D
+    H --> I[Ed25519 Public Key]
+    I --> G
 ```
 
-ZK identity aims for:
+| Actor | Responsibility | Trust Boundary |
+|---|---|---|
+| **Holder** | Owns wallet, credential and proof flow | Local device |
+| **Issuer** | Issues / signs credential | Credential authority |
+| **Verifier** | Checks proof and required claim | Verification environment |
 
-```text
-IDENTITY
-   ↓
-PROVE A CLAIM
-   ↓
-REVEAL ONLY WHAT IS NECESSARY
-   ↓
-VERIFY
-```
-
-That shift is the core idea behind this project.
+The repository contains the **Android prover wallet** and the companion **issuer backend**. The verifier is maintained as a separate application.
 
 ---
 
-# ✨ The Four-Step Experience
+# ▌03 — DATA NEVER NEEDS TO TRAVEL AS FAR AS THE CLAIM
 
-<table>
-<tr>
-<td width="25%" align="center">
-
-### 📷
-## SCAN
-
-MRZ + NFC
-
-</td>
-<td width="25%" align="center">
-
-### 🪪
-## STORE
-
-Local credential
-
-</td>
-<td width="25%" align="center">
-
-### 🧮
-## PROVE
-
-ZK / selective disclosure
-
-</td>
-<td width="25%" align="center">
-
-### ✅
-## VERIFY
-
-Claim only
-
-</td>
-</tr>
-</table>
-
----
-
-# 🧠 System Architecture
+The intended data path is:
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│                         CITIZEN                             │
-│                                                              │
-│                  Android ZK Wallet                          │
-│                                                              │
-│  Passport → Credential → ZK Proof → QR                     │
-└────────────────────────────┬─────────────────────────────────┘
-                             │
-                             │ QR / proof payload
+                         RAW IDENTITY
+                              │
+                  ┌───────────┴───────────┐
+                  ▼                       ▼
+               CAMERA                   NFC
+                MRZ                 ePassport
+                  │                       │
+                  └───────────┬───────────┘
+                              ▼
+                    ┌──────────────────┐
+                    │ LOCAL PROCESSING  │
+                    └────────┬─────────┘
                              ▼
-┌──────────────────────────────────────────────────────────────┐
-│                         VERIFIER                             │
-│                                                              │
-│              Separate verifier application                  │
-│                                                              │
-│        Scan → Verify → Present verification result          │
-└────────────────────────────┬─────────────────────────────────┘
-                             │
-                             │ Optional session status
+                    ┌──────────────────┐
+                    │ DIGITAL CREDENTIAL│
+                    └────────┬─────────┘
                              ▼
-┌──────────────────────────────────────────────────────────────┐
-│                     ISSUER BACKEND                          │
-│                                                              │
-│ Credential issuance · Government public key · Session state │
-└──────────────────────────────────────────────────────────────┘
+                    ┌──────────────────┐
+                    │ PRIVATE WITNESS  │
+                    └────────┬─────────┘
+                             ▼
+                    ┌──────────────────┐
+                    │   ZK CIRCUIT     │
+                    └────────┬─────────┘
+                             ▼
+                       PUBLIC PROOF
+                             │
+                             ▼
+                         QR CODE
+                             │
+                             ▼
+                        VERIFIER
 ```
 
-The repository contains the Android **prover wallet** and a companion Node.js **issuer backend**. The verifier is maintained as a separate application.
+### Design target
+
+```text
+PRIVATE                          PUBLIC
+────────────────────────────     ─────────────────────
+Exact DOB                    →   Age ≥ 18
+Passport number              →   Credential valid
+Full credential              →   Required claim
+```
+
+The wallet is documented as a **local wallet** with no cloud account and no blockchain storage of personal identity data in the current implementation.
 
 ---
 
-# 🔐 Privacy-First Data Flow
+# ▌04 — PASSPORT INGESTION
+
+### 📷 MRZ
 
 ```text
-                     PASSPORT
-                         │
-             ┌───────────┴───────────┐
-             ▼                       ▼
-        📷 CAMERA                 📡 NFC
-          MRZ OCR              ePassport Read
-             │                       │
+Passport page
+     ↓
+CameraX
+     ↓
+ML Kit text recognition
+     ↓
+MRZ extraction
+     ↓
+Structured passport fields
+```
+
+### 📡 NFC
+
+```text
+ePassport chip
+      ↓
+Android NFC
+      ↓
+JMRTD
+      ↓
+Passport data
+```
+
+Current flows are designed around:
+
+```text
+FULL NAME       NATIONALITY
+DATE OF BIRTH   GENDER
+DOCUMENT NO.    EXPIRY DATE
+ISSUING COUNTRY
+```
+
+The application documentation describes local processing and storing derived identity data rather than raw passport material as wallet history.
+
+---
+
+# ▌05 — CREDENTIAL FABRIC
+
+The issuer service creates a W3C Verifiable Credential-style object.
+
+```text
+             ┌───────────────────────┐
+             │ VERIFIABLE CREDENTIAL │
+             ├───────────────────────┤
+             │ issuer                │
+             │ credentialSubject     │
+             │ issuanceDate          │
+             │ proof                 │
              └───────────┬───────────┘
-                         ▼
-                Passport Processing
                          │
                          ▼
-               Derived Identity Data
-                         │
-                         ▼
-              Verifiable Credential
-                         │
-                         ▼
-                  LOCAL WALLET
-                         │
-                         ▼
-               SELECTIVE DISCLOSURE
-                         │
-                         ▼
-                ZERO-KNOWLEDGE PROOF
-                         │
-                         ▼
-                       QR CODE
-                         │
-                         ▼
-                     VERIFIER
+                  Ed25519 Signature
 ```
-
-### Local by design
-
-The current architecture does **not** use a cloud account or blockchain storage for personal data. The wallet is designed as a local device wallet.
-
----
-
-# 📷 Passport Ingestion
-
-## MRZ Scanning
-
-The wallet uses **CameraX + ML Kit text recognition** to detect and process the Machine Readable Zone of a passport.
-
-## NFC Reading
-
-For supported e-passports, the application uses Android NFC capabilities together with **JMRTD** to read passport data.
-
-The application is designed to derive:
-
-```text
-Full Name
-Nationality
-Date of Birth
-Gender
-Document Number
-Expiry Date
-Issuing Country
-```
-
-Raw MRZ/NFC material is not intended to be kept as an activity history; the wallet stores processed identity fields locally.
-
----
-
-# 🧾 Credential Layer
-
-The companion issuer service builds a passport credential in a W3C Verifiable Credential-style format.
 
 Conceptually:
 
 ```json
 {
-  "type": [
-    "VerifiableCredential",
-    "PassportCredential"
-  ],
-  "issuer": {
-    "id": "did:gov:passport-authority"
-  },
+  "type": ["VerifiableCredential", "PassportCredential"],
+  "issuer": "did:gov:passport-authority",
   "credentialSubject": {
     "id": "did:example:citizen",
     "name": "...",
@@ -278,37 +230,49 @@ Conceptually:
 }
 ```
 
-The current issuer implementation generates an **Ed25519** key pair at startup and signs issued credentials with the issuer private key.
+The current issuer implementation creates an **Ed25519** key pair at startup, signs the credential payload, and exposes the public key through its API.
 
 ---
 
-# 🧮 Zero-Knowledge Proofs
+# ▌06 — THE ZERO-KNOWLEDGE MOMENT
 
-The central demonstration is that a verifier can receive a proof of a statement rather than the underlying private value.
+Consider the statement:
 
-### Example — Age Proof
+> `Age ≥ 18`
+
+The wallet may know the exact date of birth. The verifier does not need it.
 
 ```text
-PRIVATE
-────────────────────────────
-Date of Birth = 2004-XX-XX
+                    PRIVATE WORLD
 
-            │
-            ▼
+             DOB = 2004-XX-XX
+                    │
+                    │ witness
+                    ▼
+          ┌──────────────────────┐
+          │      ZK CIRCUIT      │
+          │                      │
+          │   age(DOB) ≥ 18      │
+          └──────────┬───────────┘
+                     │
+                     │ proof
+                     ▼
+                    PUBLIC
 
-ZK CIRCUIT
-────────────────────────────
-Does DOB satisfy Age ≥ 18?
-
-            │
-            ▼
-
-PUBLIC RESULT
-────────────────────────────
-✅ Holder is 18 or older
+                ✅ AGE ≥ 18
 ```
 
-The Android app includes a bundled zkSNARK proving key:
+### In other words
+
+```text
+KNOW                 ≠                 REVEAL
+
+The wallet can know the value.
+The verifier can validate the statement.
+The exact value does not need to cross the boundary.
+```
+
+The Android app includes the bundled proving artifact:
 
 ```text
 app/src/main/assets/passport_final.zkey
@@ -316,230 +280,242 @@ app/src/main/assets/passport_final.zkey
 
 ---
 
-# 🎯 Proof Templates
+# ▌07 — SELECTIVE DISCLOSURE
 
-The current wallet exposes proof flows around:
-
-| Proof | Purpose |
-|---|---|
-| **Age ≥ 18** | Prove adulthood without exposing exact DOB |
-| **Nationality** | Prove a nationality claim |
-| **Credential Validity** | Prove the credential satisfies the required validity condition |
-
-Selective-disclosure controls are also available for identity attributes such as:
+Zero-knowledge is one tool. Controlled disclosure is another.
 
 ```text
-Photo
-Name
-Nationality
-Gender
+                       REQUEST
+                         │
+               ┌─────────┴─────────┐
+               ▼                   ▼
+          NEEDS ATTRIBUTE       NEEDS PROOF
+               │                   │
+               ▼                   ▼
+        Selective Disclosure     ZK Proof
+               │                   │
+               └─────────┬─────────┘
+                         ▼
+                  MINIMUM NECESSARY
 ```
+
+Example:
+
+| Required | Disclose? |
+|---|---:|
+| Name | ✅ only when required |
+| Nationality | ✅ only when required |
+| Gender | ✅ only when required |
+| Exact DOB | 🔒 keep private for an age predicate |
+| Passport number | 🔒 unnecessary for age proof |
+
+The current wallet UI exposes disclosure controls for attributes including photo, name, nationality and gender.
 
 ---
 
-# 📱 Android Wallet
-
-The prover application is built using **Kotlin + Jetpack Compose + Material 3**.
-
-### Wallet lifecycle
+# ▌08 — PROOF CATALOGUE
 
 ```text
-WELCOME
-   │
-   ├───────────────┐
-   ▼               ▼
-CREATE WALLET    UNLOCK WALLET
-   │               │
-   ▼               ▼
-SET 6-DIGIT PIN   BIOMETRIC / PIN
-   │               │
-   └───────┬───────┘
-           ▼
-          HOME
-           │
-     ┌─────┼─────────────┐
-     ▼     ▼             ▼
- PROFILE ACTIVITY   GENERATE PROOF
+┌────────────────────────────────────────────────────────┐
+│                    PROOF CATALOGUE                    │
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│  [01]  AGE ≥ 18                                        │
+│        Predicate proof                                 │
+│                                                        │
+│  [02]  NATIONALITY                                     │
+│        Attribute / claim verification                  │
+│                                                        │
+│  [03]  CREDENTIAL VALIDITY                             │
+│        Credential-state verification                   │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+```
+
+Proof generation is gated on having a credential in the wallet.
+
+---
+
+# ▌09 — HOLDER DEVICE
+
+The Android wallet is intentionally treated as a **device-owned identity container**.
+
+```text
+┌──────────────────────────────────────────────┐
+│                 ZK WALLET                    │
+├──────────────────────────────────────────────┤
+│                                              │
+│   🪪  CREDENTIAL                             │
+│       ACTIVE                                 │
+│                                              │
+│   ┌────────────┐   ┌─────────────────────┐  │
+│   │ GENERATE   │   │ ACTIVITY            │  │
+│   │ PROOF      │   │ PROOF HISTORY       │  │
+│   └────────────┘   └─────────────────────┘  │
+│                                              │
+│   PROFILE                    SETTINGS        │
+│                                              │
+└──────────────────────────────────────────────┘
+```
+
+Implemented screen groups include:
+
+```text
+WELCOME / CREATE WALLET
+SET PIN / SCAN PASSPORT
+HOME / ACTIVITY
+GENERATE PROOF
+PROFILE / SETTINGS
+CHANGE PIN / LANGUAGE
+```
+
+The app uses Kotlin, Jetpack Compose, Material 3, Navigation Compose and DataStore-based local persistence.
+
+---
+
+# ▌10 — AUTHENTICATION STATE
+
+```text
+                    WALLET
+                       │
+             ┌─────────┴─────────┐
+             ▼                   ▼
+         6-DIGIT PIN         BIOMETRIC
+             │                   │
+             └─────────┬─────────┘
+                       ▼
+                    UNLOCK
                        │
                        ▼
-                    QR CODE
+                 PRIVATE STATE
 ```
 
-### Main screens
+The current implementation uses a salted SHA-256 hash for the local PIN and supports AndroidX Biometric authentication.
 
-```text
-🏠 Home
-📜 Activity
-🧮 Generate Proof
-👤 Profile
-⚙️ Settings
-🔑 Change PIN
-🌍 Language
-```
+For production use, the repository documentation recommends stronger storage protections such as Android Keystore-backed encryption and stronger secret derivation.
 
 ---
 
-# 🔒 Local Wallet Security
-
-The wallet currently uses a local authentication model.
+# ▌11 — ISSUER API
 
 ```text
-6-digit PIN
-     +
-Random salt
-     +
-SHA-256 hash
-     +
-Optional biometric authentication
-     +
-Auto-lock behaviour
+                    ISSUER
+                      │
+       ┌──────────────┼──────────────┐
+       ▼              ▼              ▼
+  PUBLIC KEY      ISSUE VC       SESSION STATE
+       │              │              │
+       ▼              ▼              ▼
+/api/public-key /api/issue-passport /api/session/:nonce/status
 ```
 
-The wallet never persists the plaintext PIN.
+### Core endpoints
 
-For a production identity wallet, the repository recommends stronger protections such as:
-
-```text
-Android Keystore-backed encryption
-Stronger password derivation
-Hardware-backed protection where available
-Encrypted credential storage
-Hardened issuer authentication
-TLS-secured deployment
-```
-
-This distinction is intentional: **the repository demonstrates the architecture; production identity infrastructure requires significantly more hardening.**
-
----
-
-# 🏛️ Issuer Backend
-
-The issuer backend is a small **Node.js + Express** service.
-
-### Credential issuance
-
-```text
-POST /api/issue-passport
-```
-
-```text
-Passport / identity payload
-           ↓
-       Validation
-           ↓
-      Build VC object
-           ↓
-       Ed25519 sign
-           ↓
-      Signed credential
-```
-
-### Public key
-
-```text
-GET /api/public-key
-```
-
-Returns the issuer's Ed25519 public key.
-
-### Verification session status
-
-```text
-POST /api/session/:nonce/status
-GET  /api/session/:nonce/status
-```
-
-Session entries are short-lived and automatically expire after 60 seconds in the current implementation.
-
----
-
-# 🔄 End-to-End Scenario
-
-### 01 — Create the wallet
-
-```text
-Install app
-   ↓
-Create Wallet
-   ↓
-Set PIN
-```
-
-### 02 — Read the passport
-
-```text
-Camera → MRZ
-        +
-NFC → ePassport
-        ↓
-Derived identity data
-```
-
-### 03 — Issue the credential
-
-```text
-Identity data
-     ↓
-Issuer backend
-     ↓
-Signed Verifiable Credential
-     ↓
-Stored locally
-```
-
-### 04 — Choose what to prove
-
-```text
-Age ≥ 18
-Nationality
-Credential Validity
-```
-
-### 05 — Generate the proof
-
-```text
-Private credential
-        ↓
-ZK circuit
-        ↓
-Proof
-        ↓
-QR code
-```
-
-### 06 — Verify
-
-```text
-Verifier scans QR
-        ↓
-Proof verification
-        ↓
-✅ Valid claim
-```
-
----
-
-# 🧩 Technology Stack
-
-| Layer | Technology | Purpose |
+| Method | Endpoint | Purpose |
 |---|---|---|
-| Mobile | **Kotlin** | Android application |
-| UI | **Jetpack Compose + Material 3** | Modern wallet UI |
-| Navigation | **Navigation Compose** | Single-activity navigation |
-| Local State | **DataStore Preferences** | Wallet persistence |
-| Authentication | **AndroidX Biometric** | Fingerprint / face unlock |
-| Camera | **CameraX** | MRZ capture |
-| OCR | **ML Kit** | MRZ text recognition |
-| NFC | **JMRTD** | ePassport reading |
-| Networking | **Retrofit + OkHttp** | Issuer API communication |
-| QR | **ZXing** | Proof QR generation |
-| Issuer | **Node.js + Express** | Credential issuance service |
-| Crypto | **Ed25519** | Credential signatures |
-| ZK | **zkSNARK / Circom artifacts** | Privacy-preserving proofs |
+| `GET` | `/api/public-key` | Return issuer public key |
+| `POST` | `/api/issue-passport` | Issue signed credential |
+| `POST` | `/api/session/:nonce/status` | Update verification session |
+| `GET` | `/api/session/:nonce/status` | Read verification status |
+
+The current in-memory verification-session entries are automatically expired after 60 seconds.
 
 ---
 
-# 📂 Repository Structure
+# ▌12 — COMPLETE EXCHANGE
+
+```text
+HOLDER                         ISSUER                         VERIFIER
+  │                              │                              │
+  │──── passport data ──────────►│                              │
+  │                              │                              │
+  │◄──── signed credential ──────│                              │
+  │                              │                              │
+  │──── choose claim ────────────┐                              │
+  │                              │                              │
+  │──── generate proof ──────────┘                              │
+  │                              │                              │
+  │──────────────────────────── proof / QR ────────────────────►│
+  │                                                             │
+  │                                             verify predicate│
+  │                                                    │        │
+  │                                                    ▼        │
+  │                                           ✅ ACCEPT / REJECT │
+```
+
+The key property is the information boundary:
+
+```text
+                 HOLDER
+                   │
+             PRIVATE DATA
+                   │
+                   ▼
+                PROVER
+                   │
+                ZK PROOF
+                   │
+                   ▼
+               VERIFIER
+                   │
+              PUBLIC CLAIM
+```
+
+---
+
+# ▌13 — SECURITY MODEL
+
+### Present in the prototype
+
+```text
+✓ Local wallet model
+✓ PIN authentication
+✓ Biometric unlock
+✓ MRZ processing
+✓ NFC passport reading
+✓ Signed credential issuance
+✓ ZK proving artifact
+✓ Selective disclosure controls
+✓ QR proof handoff
+```
+
+### Production hardening still required
+
+```text
+→ Android Keystore-backed encryption
+→ Hardware-backed key protection
+→ Strong production key management
+→ Credential revocation
+→ Issuer trust registry
+→ Hardened verifier trust model
+→ Formal circuit / cryptographic audit
+→ Production authentication & TLS
+```
+
+This repository should therefore be treated as a **research / prototype implementation**, not as a production government identity system.
+
+---
+
+# ▌14 — SYSTEM STACK
+
+| Layer | Technology |
+|---|---|
+| Mobile | Kotlin |
+| UI | Jetpack Compose + Material 3 |
+| Navigation | Navigation Compose |
+| Local storage | DataStore Preferences |
+| Biometrics | AndroidX Biometric |
+| MRZ | CameraX + ML Kit |
+| Passport NFC | Android NFC + JMRTD |
+| Network | Retrofit + OkHttp |
+| QR | ZXing |
+| Issuer | Node.js + Express |
+| Credential signature | Ed25519 |
+| ZK | zkSNARK / Circom proving artifact |
+
+---
+
+# ▌15 — REPOSITORY MAP
 
 ```text
 ZK-passport/
@@ -570,9 +546,9 @@ ZK-passport/
 
 ---
 
-# 🛠️ Getting Started
+# ▌16 — BUILD
 
-## Prerequisites
+### Requirements
 
 ```text
 Android Studio
@@ -582,50 +558,26 @@ Node.js 18+
 npm
 ```
 
-The Android project targets **SDK 35** and supports devices from **min SDK 24** upward.
-
----
-
-## 1. Clone
+### Clone
 
 ```bash
 git clone https://github.com/DanielKoh2004/ZK-passport.git
 cd ZK-passport
 ```
 
----
-
-## 2. Check the proving key
-
-Make sure this file exists:
-
-```text
-app/src/main/assets/passport_final.zkey
-```
-
----
-
-## 3. Build the Android app
-
-### Windows
-
-```powershell
-.\gradlew.bat assembleDebug
-```
-
-### macOS / Linux
+### Build Android
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-Then open the project in Android Studio and run the `app` configuration.
+Windows:
 
-For real passport flows, use an Android device with NFC support.
+```powershell
+.\gradlew.bat assembleDebug
+```
 
----
-
-## 4. Start the issuer
+### Run issuer
 
 ```bash
 cd issuer-backend
@@ -633,174 +585,95 @@ npm install
 node index.js
 ```
 
-The issuer listens on port `3000` by default unless `PORT` is configured.
+Default issuer port: `3000`.
 
 ---
 
-# 🌍 Localization
-
-The wallet currently supports eight languages:
+# ▌17 — MULTILINGUAL WALLET
 
 ```text
-🇬🇧 English
-🇨🇳 中文
-🇲🇾 Bahasa Melayu
-🇮🇳 தமிழ்
-🇯🇵 日本語
-🇰🇷 한국어
-🇪🇸 Español
-🇫🇷 Français
+EN  English
+ZH  中文
+MS  Bahasa Melayu
+TA  தமிழ்
+JA  日本語
+KO  한국어
+ES  Español
+FR  Français
 ```
 
-Language preferences are persisted locally and applied through Android's locale APIs.
+Language preferences are stored locally and applied through Android's locale APIs.
 
 ---
 
-# 🎨 Visual Showcase
-
-The wallet uses a dark interface with cyan trust signals and Material 3 components.
-
-When adding screenshots to the repository, a clean product strip works especially well:
+# ▌18 — FUTURE PROTOCOL
 
 ```text
-/docs/images/
-├── welcome.png
-├── home.png
-├── passport-scan.png
-├── proof-selection.png
-├── zk-proof.png
-└── verification.png
+TODAY
+──────────────
+Passport
+Credential
+ZK proof
+QR verification
+
+        │
+        ▼
+
+NEXT
+──────────────
+Multiple credentials
+Trust registry
+Revocation
+Offline verification
+
+        │
+        ▼
+
+VISION
+──────────────
+Cross-border
+privacy-preserving
+identity infrastructure
 ```
 
-Then embed them in the README:
-
-```markdown
-<p align="center">
-  <img src="docs/images/home.png" width="30%">
-  <img src="docs/images/passport-scan.png" width="30%">
-  <img src="docs/images/zk-proof.png" width="30%">
-</p>
-```
-
-Actual app screenshots are recommended over generic passport stock images because they show the system rather than merely the concept.
-
----
-
-# 🔭 Future Direction
-
-## Multi-Credential Wallet
-
-Expand beyond passports:
+Potential credential families:
 
 ```text
 Passport
-   +
 National ID
-   +
 Driver's License
-   +
 University Credential
-   +
 Professional Certificate
+Government-issued attestations
 ```
 
-## Trust Registry
-
-Establish a verifiable relationship between credential issuers, public keys and verifiers.
-
-```text
-Issuer
-  ↓
-Trusted Registry
-  ↓
-Public Key / Status
-  ↓
-Verifier
-```
-
-## Offline Verification
-
-A future architecture can move more of the verification experience toward local, offline-capable exchange:
-
-```text
-Wallet
-  ↓
-QR / NFC
-  ↓
-Verifier
-  ↓
-Local verification
-```
-
-## Richer ZK Claims
-
-Move from simple claims toward more expressive predicates such as:
+Potential proof predicates:
 
 ```text
 Age ≥ 18
-Age within a range
-Passport not expired
+Age within range
 Nationality = X
-Credential issued by trusted authority
+Credential not expired
+Issuer is trusted
 ```
 
 ---
 
-# 🧭 The Bigger Idea
-
-The project is not really about making a digital passport.
-
-It is about changing the primitive used for identity verification.
+# ▌19 — THE PRINCIPLE
 
 ```text
-OLD
-────────────────────────────
-"Show me your document."
-           ↓
-     Reveal everything
+┌────────────────────────────────────────────────────┐
+│                                                    │
+│            DON'T ASK FOR THE DOCUMENT.             │
+│                                                    │
+│               ASK FOR THE PROOF.                  │
+│                                                    │
+└────────────────────────────────────────────────────┘
 ```
 
-versus:
+The ambition of ZK Passport is not to make identity information disappear.
 
-```text
-NEW
-────────────────────────────
-"Prove the claim."
-           ↓
-   Reveal what is necessary
-```
-
-### **Identity should be yours. Verification should be minimal.**
-
----
-
-# 📚 Documentation
-
-For deeper implementation details:
-
-- [`SYSTEM_DOCUMENTATION.md`](./SYSTEM_DOCUMENTATION.md) — system architecture, screens, data flow and security considerations
-- [`FRONTEND_WORKFLOW.md`](./FRONTEND_WORKFLOW.md) — UI and user-flow documentation
-
----
-
-# ⚠️ Security & Prototype Disclaimer
-
-This repository is a **research / prototype implementation**.
-
-It should not be treated as a production government identity system or production passport wallet without substantial additional work in areas including:
-
-```text
-Cryptographic review
-Secure key management
-Hardware-backed storage
-Issuer trust infrastructure
-Credential revocation
-Production authentication
-Transport security
-Regulatory / compliance requirements
-```
-
-The current repository documentation explicitly identifies these areas as production-hardening requirements.
+It is to make **unnecessary disclosure** disappear.
 
 ---
 
@@ -808,21 +681,16 @@ The current repository documentation explicitly identifies these areas as produc
 
 <br>
 
-### **Privacy is not hiding who you are.**
-### **It is choosing what you need to prove.**
+## `KNOW LESS. PROVE MORE.`
+
+**ZK Passport**  ·  Privacy-Preserving Digital Identity
 
 <br>
 
-**ZK Passport**
-
-*An experimental self-sovereign identity wallet powered by zero-knowledge proofs.*
+[Repository](https://github.com/DanielKoh2004/ZK-passport) · [System Documentation](./SYSTEM_DOCUMENTATION.md)
 
 <br><br>
 
-<a href="https://github.com/DanielKoh2004/ZK-passport">View Repository →</a>
-
-<br><br>
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:00D9FF,100:070B14&height=120&section=footer" width="100%"/>
+`PROVER → CREDENTIAL → ZK PROOF → VERIFIER`
 
 </div>
